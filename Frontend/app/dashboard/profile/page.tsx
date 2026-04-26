@@ -5,9 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { User } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+import { fetcher } from "@/lib/api/fetcher";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -20,13 +18,9 @@ export default function ProfilePage() {
     setLoading(true);
     setSuccess(false);
     try {
-      await fetch(`${API_BASE}/users/profile`, {
+      await fetcher("/users/profile", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email }),
+        data: { email },
       });
       setSuccess(true);
     } catch {

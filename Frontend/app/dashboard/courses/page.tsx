@@ -2,21 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { useAuth } from "@/lib/auth-context";
+import { fetcher } from "@/lib/api/fetcher";
 import { BookOpen } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-
 export default function MyCoursesPage() {
-  useAuth();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/progress`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    fetcher<any>("/progress")
       .then((d) => setCourses(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));

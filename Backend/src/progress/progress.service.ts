@@ -49,18 +49,62 @@ export class ProgressService {
   }
 
   async getUserProgress(userId: string) {
+    // Fetch all enrollments with course + lesson IDs in one query
     const enrollments = await this.prisma.enrollment.findMany({
       where: { userId },
-      include: { course: true },
+      include: {
+        course: {
+          include: {
+            modules: {
+              include: {
+                lessons: { select: { id: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
-    const progressList = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        const progress = await this.getCourseProgress(userId, enrollment.courseId);
-        return { course: enrollment.course, ...progress };
-      }),
-    );
+    // Collect all lessonIds across all enrolled courses
+    const lessonIdsByCourse: Record<string, string[]> = {};
+    const allLessonIds: string[] = [];
 
-    return progressList;
+    for (const enrollment of enrollments) {
+      const courseId = enrollment.courseId;
+      const ids = enrollment.course.modules.flatMap((m) => m.lessons.map((l) => l.id));
+      lessonIdsByCourse[courseId] = ids;
+      allLessonIds.push(...ids);
+    }
+
+    // Single DB call to get all completed lessons for this user
+    const completedRecords = allLessonIds.length > 0
+      ? await this.prisma.progress.findMany({
+          where: {
+            userId,
+            lessonId: { in: allLessonIds },
+            completed: true,
+          },
+          select: { lessonId: true },
+        })
+      : [];
+
+    const completedSet = new Set(completedRecords.map((r) => r.lessonId));
+
+    // Compute per-course progress in JS
+    return enrollments.map((enrollment) => {
+      const courseId = enrollment.courseId;
+      const lessonIds = lessonIdsByCourse[courseId] || [];
+      const totalLessons = lessonIds.length;
+      const completedLessons = lessonIds.filter((id) => completedSet.has(id)).length;
+      const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+      return {
+        courseId,
+        course: enrollment.course,
+        totalLessons,
+        completedLessons,
+        percentage,
+      };
+    });
   }
 }

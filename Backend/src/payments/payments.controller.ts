@@ -61,8 +61,9 @@ export class PaymentsController {
     return this.paymentsService.handleWebhook(body, signature);
   }
 
-  // ─── Apply Coupon (public) ─────────────────────────
+  // ─── Apply Coupon (requires auth) ───────────────────
   @Post('apply-coupon')
+  @UseGuards(JwtAuthGuard)
   applyCoupon(@Body() dto: ApplyCouponDto) {
     return this.paymentsService.applyCoupon(dto.code, dto.courseId);
   }

@@ -19,6 +19,7 @@ const create_course_dto_1 = require("./dto/create-course.dto");
 const update_course_dto_1 = require("./dto/update-course.dto");
 const create_module_dto_1 = require("./dto/create-module.dto");
 const create_lesson_dto_1 = require("./dto/create-lesson.dto");
+const update_lesson_dto_1 = require("./dto/update-lesson.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
@@ -179,7 +180,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, update_lesson_dto_1.UpdateLessonDto]),
     __metadata("design:returntype", void 0)
 ], CoursesController.prototype, "updateLesson", null);
 __decorate([

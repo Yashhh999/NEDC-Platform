@@ -323,6 +323,10 @@ let PaymentsService = class PaymentsService {
         }
         const discount = (course.price * coupon.discountPercent) / 100;
         const finalPrice = Math.max(0, course.price - discount);
+        await this.prisma.coupon.update({
+            where: { id: coupon.id },
+            data: { usedCount: { increment: 1 } },
+        });
         return {
             valid: true,
             code: coupon.code,

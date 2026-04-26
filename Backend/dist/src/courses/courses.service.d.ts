@@ -3,6 +3,7 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
+import { UpdateLessonDto } from './dto/update-lesson.dto';
 export declare class CoursesService {
     private prisma;
     constructor(prisma: PrismaService);
@@ -240,13 +241,7 @@ export declare class CoursesService {
         videoUrl: string | null;
         moduleId: string;
     }>;
-    updateLesson(id: string, data: {
-        title?: string;
-        content?: string;
-        videoUrl?: string;
-        duration?: string;
-        order?: number;
-    }): Promise<{
+    updateLesson(id: string, data: UpdateLessonDto): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;

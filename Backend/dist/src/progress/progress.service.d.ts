@@ -6,9 +6,9 @@ export declare class ProgressService {
         id: string;
         createdAt: Date;
         userId: string;
-        lessonId: string;
         completed: boolean;
         completedAt: Date | null;
+        lessonId: string;
     }>;
     getCourseProgress(userId: string, courseId: string): Promise<{
         courseId: string;
@@ -17,11 +17,21 @@ export declare class ProgressService {
         percentage: number;
     } | null>;
     getUserProgress(userId: string): Promise<{
-        courseId?: string | undefined;
-        totalLessons?: number | undefined;
-        completedLessons?: number | undefined;
-        percentage?: number | undefined;
+        courseId: string;
         course: {
+            modules: ({
+                lessons: {
+                    id: string;
+                }[];
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                courseId: string;
+                title: string;
+                order: number;
+            })[];
+        } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -35,5 +45,8 @@ export declare class ProgressService {
             isBestseller: boolean;
             published: boolean;
         };
+        totalLessons: number;
+        completedLessons: number;
+        percentage: number;
     }[]>;
 }

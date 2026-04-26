@@ -31,7 +31,7 @@ export class AdminService {
       this.prisma.inquiry.count({ where: { status: 'NEW' } }),
     ]);
 
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalRevenue = Math.round(payments.reduce((sum, p) => sum + Math.round(p.amount * 100), 0)) / 100;
 
     return {
       totalUsers,

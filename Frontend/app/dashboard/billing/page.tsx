@@ -2,10 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { useAuth } from "@/lib/auth-context";
+import { fetcher } from "@/lib/api/fetcher";
 import { CreditCard, CheckCircle, XCircle, Clock } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 const statusConfig: Record<string, { icon: any; color: string; bg: string }> = {
   PAID: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50" },
@@ -15,15 +13,11 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string }> = {
 };
 
 export default function BillingPage() {
-  useAuth();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/payments/my`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    fetcher<any>("/payments/my")
       .then((d) => setPayments(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -31,7 +25,7 @@ export default function BillingPage() {
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-bold text-gray-900">Billing & Payments</h1>
+      <h1 className="mb-8 text-3xl font-bold text-gray-900">Billing &amp; Payments</h1>
 
       {loading ? (
         <div className="space-y-4">

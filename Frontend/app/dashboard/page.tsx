@@ -4,10 +4,9 @@ import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { fetcher, API_BASE_URL } from "@/lib/api/fetcher";
 import { BookOpen, Clock, Trophy, TrendingUp, Zap, ArrowRight } from "lucide-react";
 import Link from "next/link";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 const planColors: Record<string, { bg: string; fg: string; badge: string }> = {
   FREE: { bg: "bg-gray-100", fg: "text-gray-700", badge: "bg-gray-200 text-gray-700" },
@@ -16,35 +15,65 @@ const planColors: Record<string, { bg: string; fg: string; badge: string }> = {
   ENTERPRISE: { bg: "bg-indigo-50", fg: "text-indigo-700", badge: "bg-indigo-100 text-indigo-700" },
 };
 
+interface ProgressItem {
+  courseId: string;
+  course: { id: string; title: string };
+  totalLessons: number;
+  completedLessons: number;
+  percentage: number;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [progressList, setProgressList] = useState<ProgressItem[]>([]);
+  const [enrollmentProgress, setEnrollmentProgress] = useState<Record<string, ProgressItem>>({});
 
   useEffect(() => {
-    fetch(`${API_BASE}/users/profile`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    // Fetch profile
+    fetcher<any>("/users/profile")
       .then((d) => setProfile(d.data || d))
       .catch(() => {});
 
-    fetch(`${API_BASE}/subscriptions/my`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    // Fetch subscription
+    fetcher<any>("/subscriptions/my")
       .then((d) => setSubscription(d.data || d))
+      .catch(() => {});
+
+    // Fetch certificates count
+    fetcher<any>("/certificates/my")
+      .then((d) => {
+        const data = d.data || d || [];
+        setCertificates(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+
+    // Fetch progress for all enrolled courses
+    fetcher<any>("/progress")
+      .then((d) => {
+        const data = d.data || d || [];
+        const list: ProgressItem[] = Array.isArray(data) ? data : [];
+        setProgressList(list);
+        // Build a lookup by courseId for enrollment cards
+        const map: Record<string, ProgressItem> = {};
+        list.forEach((p) => { if (p.courseId) map[p.courseId] = p; });
+        setEnrollmentProgress(map);
+      })
       .catch(() => {});
   }, []);
 
   const plan = subscription?.plan || "FREE";
   const colors = planColors[plan] || planColors.FREE;
 
+  const completedCourses = progressList.filter((p) => p.percentage === 100).length;
+
   const stats = [
     { label: "Enrolled Courses", value: profile?.totalEnrollments || 0, icon: BookOpen, color: "border-l-blue-500", bg: "bg-blue-100", fg: "text-blue-600" },
-    { label: "Completed Courses", value: 0, icon: Trophy, color: "border-l-green-500", bg: "bg-green-100", fg: "text-green-600" },
+    { label: "Completed Courses", value: completedCourses, icon: Trophy, color: "border-l-green-500", bg: "bg-green-100", fg: "text-green-600" },
     { label: "Hours Learned", value: "0", icon: Clock, color: "border-l-purple-500", bg: "bg-purple-100", fg: "text-purple-600" },
-    { label: "Certificates Earned", value: 0, icon: TrendingUp, color: "border-l-orange-500", bg: "bg-orange-100", fg: "text-orange-600" },
+    { label: "Certificates Earned", value: certificates.length, icon: TrendingUp, color: "border-l-orange-500", bg: "bg-orange-100", fg: "text-orange-600" },
   ];
 
   return (
@@ -105,18 +134,23 @@ export default function DashboardPage() {
       <h2 className="mb-4 text-xl font-bold text-gray-900">Continue Learning</h2>
       {profile?.enrollments?.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.enrollments.map((enrollment: any) => (
-            <Link href={`/dashboard/learn/${enrollment.courseId || enrollment.course?.id}`} key={enrollment.id}>
-              <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-                <h3 className="font-semibold text-gray-900 mb-2">{enrollment.course?.title}</h3>
-                <p className="text-sm text-gray-500">Enrolled {new Date(enrollment.createdAt).toLocaleDateString()}</p>
-                <div className="mt-4 h-2 w-full rounded-full bg-gray-100">
-                  <div className="h-2 rounded-full bg-blue-500" style={{ width: "0%" }} />
-                </div>
-                <p className="mt-2 text-xs text-gray-400">0% complete</p>
-              </Card>
-            </Link>
-          ))}
+          {profile.enrollments.map((enrollment: any) => {
+            const courseId = enrollment.courseId || enrollment.course?.id;
+            const prog = enrollmentProgress[courseId];
+            const pct = prog?.percentage || 0;
+            return (
+              <Link href={`/dashboard/learn/${courseId}`} key={enrollment.id}>
+                <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+                  <h3 className="font-semibold text-gray-900 mb-2">{enrollment.course?.title}</h3>
+                  <p className="text-sm text-gray-500">Enrolled {new Date(enrollment.createdAt).toLocaleDateString()}</p>
+                  <div className="mt-4 h-2 w-full rounded-full bg-gray-100">
+                    <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-400">{pct}% complete</p>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <Card className="p-8 text-center text-gray-500">

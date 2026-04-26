@@ -13,6 +13,7 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
+import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -111,7 +112,7 @@ export class CoursesController {
   @Patch('lessons/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  updateLesson(@Param('id') id: string, @Body() data: any) {
+  updateLesson(@Param('id') id: string, @Body() data: UpdateLessonDto) {
     return this.coursesService.updateLesson(id, data);
   }
 

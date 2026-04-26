@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { fetcher, API_BASE_URL } from "@/lib/api/fetcher";
 import {
   ChevronDown,
   ChevronRight,
@@ -15,8 +16,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 interface Lesson {
   id: string;
@@ -51,10 +50,10 @@ export default function CoursePlayerPage() {
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch course data
+  // Fetch course data (public endpoint)
   useEffect(() => {
     if (!courseId) return;
-    fetch(`${API_BASE}/courses/${courseId}`)
+    fetch(`${API_BASE_URL}/courses/${courseId}`)
       .then((r) => r.json())
       .then((d) => {
         const data = d.data || d;
@@ -70,26 +69,13 @@ export default function CoursePlayerPage() {
       .finally(() => setLoading(false));
   }, [courseId]);
 
-  // Fetch progress
+  // Fetch progress (authenticated)
   useEffect(() => {
     if (!courseId) return;
-    fetch(`${API_BASE}/progress/course/${courseId}`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    fetcher<any>(`/progress/course/${courseId}`)
       .then((d) => {
         const data = d.data || d;
         setProgress(data);
-      })
-      .catch(() => {});
-
-    // Fetch individual lesson completion
-    fetch(`${API_BASE}/progress`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
-      .then(() => {
-        // Progress endpoint returns course-level, for lesson-level we track locally
       })
       .catch(() => {});
   }, [courseId]);
@@ -104,17 +90,13 @@ export default function CoursePlayerPage() {
   };
 
   const markComplete = async (lessonId: string) => {
-    await fetch(`${API_BASE}/progress/lesson/${lessonId}/complete`, {
-      method: "POST",
-      credentials: "include",
-    });
+    await fetcher(`/progress/lesson/${lessonId}/complete`, { method: "POST" });
     setCompletedLessons((prev) => new Set(prev).add(lessonId));
     // Refresh progress
-    const res = await fetch(`${API_BASE}/progress/course/${courseId}`, {
-      credentials: "include",
-    });
-    const d = await res.json();
-    setProgress(d.data || d);
+    try {
+      const d = await fetcher<any>(`/progress/course/${courseId}`);
+      setProgress(d.data || d);
+    } catch {}
   };
 
   if (loading) {

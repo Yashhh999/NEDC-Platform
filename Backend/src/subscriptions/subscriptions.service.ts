@@ -22,6 +22,20 @@ export class SubscriptionsService {
       };
     }
 
+    // Check if subscription has expired
+    if (subscription.endDate && new Date() > subscription.endDate) {
+      await this.prisma.subscription.update({
+        where: { id: subscription.id },
+        data: { status: SubscriptionStatus.EXPIRED },
+      });
+      return {
+        plan: SubscriptionPlan.FREE,
+        status: SubscriptionStatus.ACTIVE,
+        isActive: true,
+        message: 'Your subscription has expired',
+      };
+    }
+
     return {
       ...subscription,
       isActive: true,

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   Home,
@@ -30,7 +30,25 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
+  // ── Route Guard: Show spinner while auth loads ──
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+      </div>
+    );
+  }
+
+  // ── Route Guard: Redirect unauthenticated users to login ──
+  if (!user) {
+    if (typeof window !== "undefined") {
+      router.push("/login");
+    }
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">

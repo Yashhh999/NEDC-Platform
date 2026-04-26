@@ -31,6 +31,18 @@ let SubscriptionsService = class SubscriptionsService {
                 message: 'You are on the Free plan',
             };
         }
+        if (subscription.endDate && new Date() > subscription.endDate) {
+            await this.prisma.subscription.update({
+                where: { id: subscription.id },
+                data: { status: client_1.SubscriptionStatus.EXPIRED },
+            });
+            return {
+                plan: client_1.SubscriptionPlan.FREE,
+                status: client_1.SubscriptionStatus.ACTIVE,
+                isActive: true,
+                message: 'Your subscription has expired',
+            };
+        }
         return {
             ...subscription,
             isActive: true,

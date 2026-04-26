@@ -2,22 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { useAuth } from "@/lib/auth-context";
+import { fetcher } from "@/lib/api/fetcher";
 import { Award, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-
 export default function CertificatesPage() {
-  useAuth();
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/certificates/my`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
+    fetcher<any>("/certificates/my")
       .then((d) => setCertificates(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));

@@ -58,13 +58,51 @@ let ProgressService = class ProgressService {
     async getUserProgress(userId) {
         const enrollments = await this.prisma.enrollment.findMany({
             where: { userId },
-            include: { course: true },
+            include: {
+                course: {
+                    include: {
+                        modules: {
+                            include: {
+                                lessons: { select: { id: true } },
+                            },
+                        },
+                    },
+                },
+            },
         });
-        const progressList = await Promise.all(enrollments.map(async (enrollment) => {
-            const progress = await this.getCourseProgress(userId, enrollment.courseId);
-            return { course: enrollment.course, ...progress };
-        }));
-        return progressList;
+        const lessonIdsByCourse = {};
+        const allLessonIds = [];
+        for (const enrollment of enrollments) {
+            const courseId = enrollment.courseId;
+            const ids = enrollment.course.modules.flatMap((m) => m.lessons.map((l) => l.id));
+            lessonIdsByCourse[courseId] = ids;
+            allLessonIds.push(...ids);
+        }
+        const completedRecords = allLessonIds.length > 0
+            ? await this.prisma.progress.findMany({
+                where: {
+                    userId,
+                    lessonId: { in: allLessonIds },
+                    completed: true,
+                },
+                select: { lessonId: true },
+            })
+            : [];
+        const completedSet = new Set(completedRecords.map((r) => r.lessonId));
+        return enrollments.map((enrollment) => {
+            const courseId = enrollment.courseId;
+            const lessonIds = lessonIdsByCourse[courseId] || [];
+            const totalLessons = lessonIds.length;
+            const completedLessons = lessonIds.filter((id) => completedSet.has(id)).length;
+            const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+            return {
+                courseId,
+                course: enrollment.course,
+                totalLessons,
+                completedLessons,
+                percentage,
+            };
+        });
     }
 };
 exports.ProgressService = ProgressService;

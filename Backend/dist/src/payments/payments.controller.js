@@ -91,6 +91,7 @@ __decorate([
 ], PaymentsController.prototype, "webhook", null);
 __decorate([
     (0, common_1.Post)('apply-coupon'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [apply_coupon_dto_1.ApplyCouponDto]),
