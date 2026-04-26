@@ -8,20 +8,19 @@ import { Users, BookOpen, CreditCard, TrendingUp, Award, MessageSquare, DollarSi
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
+  useAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setStats(d.data || d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const cards = [
     { label: "Total Users", value: stats?.totalUsers || 0, icon: Users, color: "border-l-blue-500", iconBg: "bg-blue-100", iconFg: "text-blue-600" },

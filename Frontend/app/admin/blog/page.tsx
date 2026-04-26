@@ -10,7 +10,7 @@ import { Plus, Trash2, Edit, Eye, EyeOff, X } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function AdminBlogPage() {
-  const { token } = useAuth();
+  useAuth();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -25,9 +25,8 @@ export default function AdminBlogPage() {
   });
 
   const fetchPosts = () => {
-    if (!token) return;
     fetch(`${API_BASE}/blog/admin/all`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setPosts(d.data || d || []))
@@ -35,7 +34,7 @@ export default function AdminBlogPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchPosts(); }, [token]);
+  useEffect(() => { fetchPosts(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +42,8 @@ export default function AdminBlogPage() {
     const url = editingId ? `${API_BASE}/blog/${editingId}` : `${API_BASE}/blog`;
     await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json"},
+        credentials: "include",
       body: JSON.stringify(form),
     });
     setForm({ title: "", slug: "", content: "", excerpt: "", authorName: "", published: false });
@@ -69,7 +69,7 @@ export default function AdminBlogPage() {
     if (!confirm("Delete this blog post?")) return;
     await fetch(`${API_BASE}/blog/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setPosts((prev) => prev.filter((p) => p.id !== id));
   };
@@ -77,7 +77,8 @@ export default function AdminBlogPage() {
   const togglePublish = async (post: any) => {
     await fetch(`${API_BASE}/blog/${post.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json"},
+        credentials: "include",
       body: JSON.stringify({ published: !post.published }),
     });
     fetchPosts();

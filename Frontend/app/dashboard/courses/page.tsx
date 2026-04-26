@@ -8,20 +8,19 @@ import { BookOpen } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function MyCoursesPage() {
-  const { token } = useAuth();
+  useAuth();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/progress`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setCourses(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   return (
     <div>

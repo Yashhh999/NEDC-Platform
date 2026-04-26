@@ -13,6 +13,7 @@ exports.CreateOrderDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateOrderDto {
     courseId;
+    couponCode;
 }
 exports.CreateOrderDto = CreateOrderDto;
 __decorate([
@@ -20,4 +21,10 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateOrderDto.prototype, "courseId", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(50),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "couponCode", void 0);
 //# sourceMappingURL=create-order.dto.js.map

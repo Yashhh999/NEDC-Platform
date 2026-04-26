@@ -32,6 +32,7 @@ export declare class AdminService {
         courseId: string;
         orderId: string;
         paymentId: string | null;
+        couponCode: string | null;
         amount: number;
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
@@ -84,6 +85,7 @@ export declare class AdminService {
             courseId: string;
             orderId: string;
             paymentId: string | null;
+            couponCode: string | null;
             amount: number;
             currency: string;
             status: import(".prisma/client").$Enums.PaymentStatus;

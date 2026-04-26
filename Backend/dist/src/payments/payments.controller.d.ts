@@ -23,11 +23,11 @@ export declare class PaymentsController {
     }, dto: VerifyPaymentDto): Promise<{
         message: string;
         payment: {
-            id: string;
-            orderId: string;
-            paymentId: string | null;
-            amount: number;
-            status: import(".prisma/client").$Enums.PaymentStatus;
+            id: any;
+            orderId: any;
+            paymentId: any;
+            amount: any;
+            status: any;
         };
     }>;
     getMyPayments(user: {
@@ -48,6 +48,7 @@ export declare class PaymentsController {
         courseId: string;
         orderId: string;
         paymentId: string | null;
+        couponCode: string | null;
         amount: number;
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
@@ -71,6 +72,7 @@ export declare class PaymentsController {
         courseId: string;
         orderId: string;
         paymentId: string | null;
+        couponCode: string | null;
         amount: number;
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;

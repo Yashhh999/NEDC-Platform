@@ -10,7 +10,7 @@ import { User } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function ProfilePage() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -24,8 +24,8 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ email }),
       });
       setSuccess(true);

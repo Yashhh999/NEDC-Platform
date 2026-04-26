@@ -2,28 +2,22 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 
 interface FetchOptions extends RequestInit {
   data?: any;
-  requireAuth?: boolean;
 }
 
 export async function fetcher<T>(
   endpoint: string,
-  { data, requireAuth = true, headers: customHeaders, ...customConfig }: FetchOptions = {}
+  { data, headers: customHeaders, ...customConfig }: FetchOptions = {}
 ): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(customHeaders as Record<string, string>),
   };
 
-  if (requireAuth && token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const config: RequestInit = {
     method: data ? "POST" : "GET",
     body: data ? JSON.stringify(data) : undefined,
     headers,
+    credentials: "include", // send httpOnly cookie automatically
     ...customConfig,
   };
 

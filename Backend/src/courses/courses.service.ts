@@ -34,7 +34,28 @@ export class CoursesService {
     });
   }
 
+  // Public endpoint — no user enrollment data (privacy + performance)
   async findOne(id: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { id },
+      include: {
+        modules: {
+          include: { lessons: { orderBy: { order: 'asc' } } },
+          orderBy: { order: 'asc' },
+        },
+        _count: { select: { enrollments: true } },
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    return course;
+  }
+
+  // Admin-only — includes enrollment details with user info
+  async findOneAdmin(id: string) {
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
@@ -56,6 +77,48 @@ export class CoursesService {
     }
 
     return course;
+  }
+
+  // ─── Homepage Data (public) ─────────────────────────────
+  async getHomepageData() {
+    const [featuredCourses, totalCourses, totalEnrollments] =
+      await Promise.all([
+        this.prisma.course.findMany({
+          where: { published: true, isFeatured: true },
+          take: 4,
+          include: {
+            _count: { select: { enrollments: true, modules: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.course.count({ where: { published: true } }),
+        this.prisma.enrollment.count(),
+      ]);
+
+    // If fewer than 4 featured, backfill with bestsellers or recent
+    let courses = featuredCourses;
+    if (courses.length < 4) {
+      const remaining = await this.prisma.course.findMany({
+        where: {
+          published: true,
+          id: { notIn: courses.map((c) => c.id) },
+        },
+        take: 4 - courses.length,
+        include: {
+          _count: { select: { enrollments: true, modules: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      courses = [...courses, ...remaining];
+    }
+
+    return {
+      courses,
+      stats: {
+        totalCourses,
+        totalLearners: totalEnrollments,
+      },
+    };
   }
 
   async create(dto: CreateCourseDto) {

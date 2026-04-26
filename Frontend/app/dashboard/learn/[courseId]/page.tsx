@@ -43,7 +43,7 @@ interface Course {
 
 export default function CoursePlayerPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const { token } = useAuth();
+  useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
@@ -72,9 +72,9 @@ export default function CoursePlayerPage() {
 
   // Fetch progress
   useEffect(() => {
-    if (!token || !courseId) return;
+    if (!courseId) return;
     fetch(`${API_BASE}/progress/course/${courseId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => {
@@ -85,14 +85,14 @@ export default function CoursePlayerPage() {
 
     // Fetch individual lesson completion
     fetch(`${API_BASE}/progress`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then(() => {
         // Progress endpoint returns course-level, for lesson-level we track locally
       })
       .catch(() => {});
-  }, [token, courseId]);
+  }, [courseId]);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) => {
@@ -104,15 +104,14 @@ export default function CoursePlayerPage() {
   };
 
   const markComplete = async (lessonId: string) => {
-    if (!token) return;
     await fetch(`${API_BASE}/progress/lesson/${lessonId}/complete`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setCompletedLessons((prev) => new Set(prev).add(lessonId));
     // Refresh progress
     const res = await fetch(`${API_BASE}/progress/course/${courseId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     const d = await res.json();
     setProgress(d.data || d);

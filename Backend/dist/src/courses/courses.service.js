@@ -46,6 +46,22 @@ let CoursesService = class CoursesService {
                     include: { lessons: { orderBy: { order: 'asc' } } },
                     orderBy: { order: 'asc' },
                 },
+                _count: { select: { enrollments: true } },
+            },
+        });
+        if (!course) {
+            throw new common_1.NotFoundException('Course not found');
+        }
+        return course;
+    }
+    async findOneAdmin(id) {
+        const course = await this.prisma.course.findUnique({
+            where: { id },
+            include: {
+                modules: {
+                    include: { lessons: { orderBy: { order: 'asc' } } },
+                    orderBy: { order: 'asc' },
+                },
                 enrollments: {
                     include: {
                         user: { select: { id: true, email: true, name: true } },
@@ -58,6 +74,42 @@ let CoursesService = class CoursesService {
             throw new common_1.NotFoundException('Course not found');
         }
         return course;
+    }
+    async getHomepageData() {
+        const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all([
+            this.prisma.course.findMany({
+                where: { published: true, isFeatured: true },
+                take: 4,
+                include: {
+                    _count: { select: { enrollments: true, modules: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.course.count({ where: { published: true } }),
+            this.prisma.enrollment.count(),
+        ]);
+        let courses = featuredCourses;
+        if (courses.length < 4) {
+            const remaining = await this.prisma.course.findMany({
+                where: {
+                    published: true,
+                    id: { notIn: courses.map((c) => c.id) },
+                },
+                take: 4 - courses.length,
+                include: {
+                    _count: { select: { enrollments: true, modules: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+            courses = [...courses, ...remaining];
+        }
+        return {
+            courses,
+            stats: {
+                totalCourses,
+                totalLearners: totalEnrollments,
+            },
+        };
     }
     async create(dto) {
         return this.prisma.course.create({ data: dto });

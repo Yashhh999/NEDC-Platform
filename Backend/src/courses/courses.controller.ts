@@ -21,23 +21,38 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class CoursesController {
   constructor(private coursesService: CoursesService) {}
 
+  // Public: homepage featured courses + stats
+  @Get('homepage')
+  getHomepageData() {
+    return this.coursesService.getHomepageData();
+  }
+
   // Public: published courses only
   @Get()
   findPublished() {
     return this.coursesService.findPublished();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.coursesService.findOne(id);
-  }
-
-  // Admin: all courses
+  // Admin: all courses (must be before :id to avoid route conflict)
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   findAll() {
     return this.coursesService.findAll();
+  }
+
+  // Admin: single course with enrollment details
+  @Get(':id/admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  findOneAdmin(@Param('id') id: string) {
+    return this.coursesService.findOneAdmin(id);
+  }
+
+  // Public: single course (no enrollment user data)
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.coursesService.findOne(id);
   }
 
   @Post()

@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -12,6 +13,9 @@ async function bootstrap() {
 
   // ── Security: HTTP headers ──
   app.use(helmet.default());
+
+  // ── Cookie parser — required for httpOnly JWT cookies ──
+  app.use(cookieParser());
 
   // ── Security: CORS — restrict to known origins ──
   const allowedOrigins = process.env.CORS_ORIGIN

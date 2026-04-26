@@ -13,11 +13,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -25,17 +24,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount, check for existing session via /auth/me (cookie-based)
   useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    fetch(`${API_BASE}/auth/me`, { credentials: "include" })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.data?.user || data.user || null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -43,17 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include", // receive httpOnly cookie
     });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.message || "Login failed");
     }
     const data = await res.json();
-    const accessToken = data.data?.access_token || data.access_token;
     const userData = data.data?.user || data.user;
-    localStorage.setItem("token", accessToken);
-    localStorage.setItem("user", JSON.stringify(userData));
-    setToken(accessToken);
     setUser(userData);
   }, []);
 
@@ -62,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
+      credentials: "include",
     });
     if (!res.ok) {
       const err = await res.json();
@@ -71,17 +70,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await login(email, password);
   }, [login]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setToken(null);
+  const logout = useCallback(async () => {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
     setUser(null);
   }, []);
 
   const isAdmin = user?.role?.toLowerCase() === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

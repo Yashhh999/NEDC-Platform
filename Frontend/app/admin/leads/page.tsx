@@ -16,25 +16,25 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AdminLeadsPage() {
-  const { token } = useAuth();
+  useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/inquiries`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setLeads(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const updateStatus = async (id: string, status: string) => {
     await fetch(`${API_BASE}/inquiries/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json"},
+        credentials: "include",
       body: JSON.stringify({ status }),
     });
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
@@ -44,7 +44,7 @@ export default function AdminLeadsPage() {
     if (!confirm("Delete this lead?")) return;
     await fetch(`${API_BASE}/inquiries/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setLeads((prev) => prev.filter((l) => l.id !== id));
   };

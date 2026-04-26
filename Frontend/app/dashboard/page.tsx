@@ -17,26 +17,25 @@ const planColors: Record<string, { bg: string; fg: string; badge: string }> = {
 };
 
 export default function DashboardPage() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/users/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setProfile(d.data || d))
       .catch(() => {});
 
     fetch(`${API_BASE}/subscriptions/my`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setSubscription(d.data || d))
       .catch(() => {});
-  }, [token]);
+  }, []);
 
   const plan = subscription?.plan || "FREE";
   const colors = planColors[plan] || planColors.FREE;

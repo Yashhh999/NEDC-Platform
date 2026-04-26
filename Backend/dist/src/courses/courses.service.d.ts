@@ -64,6 +64,44 @@ export declare class CoursesService {
         published: boolean;
     })[]>;
     findOne(id: string): Promise<{
+        _count: {
+            enrollments: number;
+        };
+        modules: ({
+            lessons: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                title: string;
+                duration: string | null;
+                order: number;
+                content: string | null;
+                videoUrl: string | null;
+                moduleId: string;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            courseId: string;
+            title: string;
+            order: number;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        title: string;
+        description: string | null;
+        price: number;
+        thumbnail: string | null;
+        category: string | null;
+        duration: string | null;
+        isFeatured: boolean;
+        isBestseller: boolean;
+        published: boolean;
+    }>;
+    findOneAdmin(id: string): Promise<{
         enrollments: ({
             user: {
                 name: string | null;
@@ -112,6 +150,31 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+    }>;
+    getHomepageData(): Promise<{
+        courses: ({
+            _count: {
+                enrollments: number;
+                modules: number;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            title: string;
+            description: string | null;
+            price: number;
+            thumbnail: string | null;
+            category: string | null;
+            duration: string | null;
+            isFeatured: boolean;
+            isBestseller: boolean;
+            published: boolean;
+        })[];
+        stats: {
+            totalCourses: number;
+            totalLearners: number;
+        };
     }>;
     create(dto: CreateCourseDto): Promise<{
         id: string;

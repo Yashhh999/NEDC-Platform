@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,48 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+
+interface HomepageCourse {
+  id: string;
+  title: string;
+  price: number;
+  category?: string;
+  duration?: string;
+  isBestseller: boolean;
+  isFeatured: boolean;
+  thumbnail?: string;
+  _count?: { enrollments: number; modules: number };
+}
+
+interface HomepageData {
+  courses: HomepageCourse[];
+  stats: {
+    totalCourses: number;
+    totalLearners: number;
+  };
+}
+
 export default function Home() {
+  const [homepageData, setHomepageData] = useState<HomepageData | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/courses/homepage`)
+      .then((r) => r.json())
+      .then((d) => setHomepageData(d.data || d))
+      .catch(() => {});
+  }, []);
+
+  const courses = homepageData?.courses || [];
+  const totalLearners = homepageData?.stats?.totalLearners || 0;
+  const totalCourses = homepageData?.stats?.totalCourses || 0;
+
+  // Format learner count for display
+  const formatCount = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k+`;
+    return `${n}+`;
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans">
       <Navbar />
@@ -64,11 +107,11 @@ export default function Home() {
                 <div className="mt-12 flex items-center gap-8 text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-blue-500" />
-                    <span><strong className="text-gray-900">10,000+</strong> Learners</span>
+                    <span><strong className="text-gray-900">{totalLearners > 0 ? formatCount(totalLearners) : "10,000+"}</strong> Learners</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-5 w-5 text-blue-500" />
-                    <span><strong className="text-gray-900">50+</strong> Courses</span>
+                    <span><strong className="text-gray-900">{totalCourses > 0 ? `${totalCourses}+` : "50+"}</strong> Courses</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-blue-500" />
@@ -99,7 +142,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ═══ RECOMMENDATION COURSES ═══ */}
+        {/* ═══ RECOMMENDATION COURSES (Dynamic) ═══ */}
         <section className="bg-gray-50 py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -114,35 +157,45 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <CourseCard
-                title="GST Registration & Compliance for Startups"
-                rating={4.8}
-                reviews={1240}
-                price="₹2,999"
-                isBestseller
-                imageColor="bg-slate-200"
-              />
-              <CourseCard
-                title="Business Plan Writing Masterclass"
-                rating={4.7}
-                reviews={850}
-                price="₹1,999"
-                isBestseller
-                imageColor="bg-blue-200"
-              />
-              <CourseCard
-                title="Funding & Investor Pitch Preparation"
-                rating={4.9}
-                reviews={2100}
-                price="₹3,499"
-                isBestseller
-                imageColor="bg-teal-200"
-              />
-              <div className="flex items-center justify-center">
-                <button className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-blue-600 transition-colors shadow-lg">
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              </div>
+              {courses.length > 0 ? (
+                <>
+                  {courses.slice(0, 3).map((course) => (
+                    <Link href={`/courses/${course.id}`} key={course.id}>
+                      <CourseCard
+                        title={course.title}
+                        rating={4.8}
+                        reviews={course._count?.enrollments || 0}
+                        price={`₹${course.price.toLocaleString()}`}
+                        isBestseller={course.isBestseller}
+                        duration={course.duration || undefined}
+                        lessons={course._count?.modules || 12}
+                        imageColor={
+                          ["bg-slate-200", "bg-blue-200", "bg-teal-200", "bg-indigo-100"][
+                            courses.indexOf(course) % 4
+                          ]
+                        }
+                      />
+                    </Link>
+                  ))}
+                  <div className="flex items-center justify-center">
+                    <Link href="/courses">
+                      <button className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-blue-600 transition-colors shadow-lg">
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Skeleton loading cards */}
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-80 animate-pulse rounded-2xl bg-gray-200" />
+                  ))}
+                  <div className="flex items-center justify-center">
+                    <div className="h-14 w-14 rounded-full bg-gray-200 animate-pulse" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </section>
@@ -200,7 +253,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ═══ TOP COURSES ═══ */}
+        {/* ═══ TOP COURSES (Dynamic) ═══ */}
         <section className="bg-gray-50 py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="mb-8 text-3xl font-bold text-gray-900">Discover Top Courses</h2>
@@ -209,7 +262,7 @@ export default function Home() {
               <div className="flex gap-8 whitespace-nowrap">
                 <button className="border-b-2 border-blue-600 pb-4 font-semibold text-blue-600">All Categories</button>
                 <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">Entrepreneurship</button>
-                <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">GST & Legal</button>
+                <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">GST &amp; Legal</button>
                 <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">Marketing</button>
                 <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">Finance</button>
                 <button className="pb-4 font-medium text-gray-500 hover:text-gray-900">Leadership</button>
@@ -217,78 +270,39 @@ export default function Home() {
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <CourseCard
-                title="Digital Marketing for Small Businesses"
-                rating={4.6}
-                reviews={1310}
-                price="₹1,499"
-                originalPrice="₹4,999"
-                imageColor="bg-indigo-100"
-              />
-              <CourseCard
-                title="Company Registration & Legal Compliance"
-                rating={4.8}
-                reviews={895}
-                price="₹2,499"
-                isBestseller
-                imageColor="bg-pink-100"
-              />
-              <CourseCard
-                title="Financial Planning for Entrepreneurs"
-                rating={4.5}
-                reviews={520}
-                price="₹1,999"
-                imageColor="bg-yellow-100"
-              />
-              <CourseCard
-                title="E-commerce Business from Scratch"
-                rating={4.7}
-                reviews={298}
-                price="₹2,999"
-                imageColor="bg-emerald-100"
-              />
+              {courses.length > 0 ? (
+                courses.slice(0, 4).map((course, idx) => (
+                  <Link href={`/courses/${course.id}`} key={course.id}>
+                    <CourseCard
+                      title={course.title}
+                      rating={4.6 + (idx % 3) * 0.1}
+                      reviews={course._count?.enrollments || 0}
+                      price={`₹${course.price.toLocaleString()}`}
+                      isBestseller={course.isBestseller}
+                      duration={course.duration || undefined}
+                      lessons={course._count?.modules || 12}
+                      imageColor={
+                        ["bg-indigo-100", "bg-pink-100", "bg-yellow-100", "bg-emerald-100"][idx % 4]
+                      }
+                    />
+                  </Link>
+                ))
+              ) : (
+                [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-80 animate-pulse rounded-2xl bg-gray-200" />
+                ))
+              )}
             </div>
 
             <div className="mt-12 flex items-center justify-center gap-4">
               <button className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-blue-600 transition-colors">
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ SKILL UNLOCK ═══ */}
-        <section className="py-24">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-12 text-3xl font-bold text-gray-900">Unlock New Skills</h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              <CourseCard
-                title="Communication & Negotiation for Business Leaders"
-                rating={4.7}
-                reviews={641}
-                price="₹1,299"
-                originalPrice="₹3,999"
-                imageColor="bg-amber-100"
-              />
-              <CourseCard
-                title="Startup Fundraising: Angel to Series A"
-                rating={4.8}
-                reviews={324}
-                price="₹2,499"
-                originalPrice="₹5,999"
-                imageColor="bg-cyan-100"
-              />
-              <CourseCard
-                title="Business English & Professional Communication"
-                rating={4.7}
-                reviews={429}
-                price="₹999"
-                originalPrice="₹2,499"
-                imageColor="bg-rose-100"
-              />
+              <Link href="/courses">
+                <button className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-blue-600 transition-colors">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </Link>
             </div>
           </div>
         </section>
@@ -374,7 +388,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ═══ REVIEWS ═══ */}
+        {/* ═══ REVIEWS (static — no Review model yet) ═══ */}
         <section className="bg-gray-50 py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="mb-16 text-3xl font-bold text-gray-900 text-center">
@@ -419,7 +433,7 @@ export default function Home() {
               <div className="relative z-10 grid gap-8 lg:grid-cols-2 items-center p-12 md:p-20">
                 <div>
                   <h2 className="mb-8 text-4xl font-bold text-white sm:text-5xl leading-tight">
-                    Join over <span className="text-yellow-400">10,000</span>
+                    Join over <span className="text-yellow-400">{totalLearners > 0 ? formatCount(totalLearners) : "10,000"}</span>
                     <br />
                     learners nationwide
                   </h2>

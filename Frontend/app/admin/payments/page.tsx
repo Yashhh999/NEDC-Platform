@@ -15,20 +15,19 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string }> = {
 };
 
 export default function AdminPaymentsPage() {
-  const { token } = useAuth();
+  useAuth();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/admin/payments`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setPayments(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   return (
     <div>

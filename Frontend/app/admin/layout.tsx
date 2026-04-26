@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   ChevronRight,
   FileText,
   Image,
+  ShieldAlert,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -36,7 +37,51 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const router = useRouter();
+  const { user, loading, isAdmin, logout } = useAuth();
+
+  // ── Route Guard: Show spinner while auth loads ──
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Route Guard: Redirect unauthenticated users to login ──
+  if (!user) {
+    if (typeof window !== "undefined") {
+      router.replace("/login");
+    }
+    return null;
+  }
+
+  // ── Route Guard: Redirect non-admin users to dashboard ──
+  if (!isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="mx-auto max-w-md rounded-2xl bg-white p-10 text-center shadow-lg">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+            <ShieldAlert className="h-8 w-8 text-red-500" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
+          <p className="mb-6 text-gray-600">
+            You don&apos;t have administrator privileges to access this page.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">

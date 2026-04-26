@@ -27,14 +27,20 @@ let CoursesController = class CoursesController {
     constructor(coursesService) {
         this.coursesService = coursesService;
     }
+    getHomepageData() {
+        return this.coursesService.getHomepageData();
+    }
     findPublished() {
         return this.coursesService.findPublished();
     }
-    findOne(id) {
-        return this.coursesService.findOne(id);
-    }
     findAll() {
         return this.coursesService.findAll();
+    }
+    findOneAdmin(id) {
+        return this.coursesService.findOneAdmin(id);
+    }
+    findOne(id) {
+        return this.coursesService.findOne(id);
     }
     create(dto) {
         return this.coursesService.create(dto);
@@ -66,18 +72,17 @@ let CoursesController = class CoursesController {
 };
 exports.CoursesController = CoursesController;
 __decorate([
+    (0, common_1.Get)('homepage'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], CoursesController.prototype, "getHomepageData", null);
+__decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], CoursesController.prototype, "findPublished", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], CoursesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Get)('admin/all'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
@@ -86,6 +91,22 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], CoursesController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)(':id/admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('admin'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], CoursesController.prototype, "findOneAdmin", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], CoursesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

@@ -9,26 +9,25 @@ import { Trash2, Shield } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function AdminUsersPage() {
-  const { token } = useAuth();
+  useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/users`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setUsers(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const deleteUser = async (id: string) => {
     if (!confirm("Are you sure?")) return;
     await fetch(`${API_BASE}/users/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setUsers((prev) => prev.filter((u) => u.id !== id));
   };
@@ -37,7 +36,8 @@ export default function AdminUsersPage() {
     const newRole = currentRole?.toLowerCase() === "admin" ? "USER" : "ADMIN";
     await fetch(`${API_BASE}/users/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json"},
+        credentials: "include",
       body: JSON.stringify({ role: newRole }),
     });
     setUsers((prev) =>

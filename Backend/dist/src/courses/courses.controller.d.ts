@@ -6,6 +6,31 @@ import { CreateLessonDto } from './dto/create-lesson.dto';
 export declare class CoursesController {
     private coursesService;
     constructor(coursesService: CoursesService);
+    getHomepageData(): Promise<{
+        courses: ({
+            _count: {
+                enrollments: number;
+                modules: number;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            title: string;
+            description: string | null;
+            price: number;
+            thumbnail: string | null;
+            category: string | null;
+            duration: string | null;
+            isFeatured: boolean;
+            isBestseller: boolean;
+            published: boolean;
+        })[];
+        stats: {
+            totalCourses: number;
+            totalLearners: number;
+        };
+    }>;
     findPublished(): Promise<({
         _count: {
             enrollments: number;
@@ -25,7 +50,45 @@ export declare class CoursesController {
         isBestseller: boolean;
         published: boolean;
     })[]>;
-    findOne(id: string): Promise<{
+    findAll(): Promise<({
+        _count: {
+            enrollments: number;
+        };
+        modules: ({
+            lessons: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                title: string;
+                duration: string | null;
+                order: number;
+                content: string | null;
+                videoUrl: string | null;
+                moduleId: string;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            courseId: string;
+            title: string;
+            order: number;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        title: string;
+        description: string | null;
+        price: number;
+        thumbnail: string | null;
+        category: string | null;
+        duration: string | null;
+        isFeatured: boolean;
+        isBestseller: boolean;
+        published: boolean;
+    })[]>;
+    findOneAdmin(id: string): Promise<{
         enrollments: ({
             user: {
                 name: string | null;
@@ -75,7 +138,7 @@ export declare class CoursesController {
         isBestseller: boolean;
         published: boolean;
     }>;
-    findAll(): Promise<({
+    findOne(id: string): Promise<{
         _count: {
             enrollments: number;
         };
@@ -112,7 +175,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
-    })[]>;
+    }>;
     create(dto: CreateCourseDto): Promise<{
         id: string;
         createdAt: Date;

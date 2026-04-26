@@ -14,6 +14,12 @@ const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
+function cookieOrHeaderExtractor(req) {
+    if (req?.cookies?.access_token) {
+        return req.cookies.access_token;
+    }
+    return passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+}
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(configService) {
         const secret = configService.get('JWT_SECRET');
@@ -21,7 +27,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             throw new Error('JWT_SECRET is not defined in environment variables');
         }
         super({
-            jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: cookieOrHeaderExtractor,
             ignoreExpiration: false,
             secretOrKey: secret,
         });

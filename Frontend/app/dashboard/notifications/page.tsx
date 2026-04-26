@@ -23,25 +23,24 @@ const typeColors: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const { token } = useAuth();
+  useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/notifications`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setNotifications(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const markAllRead = async () => {
     await fetch(`${API_BASE}/notifications/read-all`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };

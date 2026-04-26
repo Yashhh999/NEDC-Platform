@@ -102,7 +102,14 @@ let PaymentsService = class PaymentsService {
         if (!this.razorpay) {
             throw new common_1.BadRequestException('Payment gateway is not configured. Please add Razorpay API keys.');
         }
-        const amountInPaise = Math.round(course.price * 100);
+        let finalPrice = course.price;
+        let couponCode = null;
+        if (dto.couponCode) {
+            const couponResult = await this.applyCoupon(dto.couponCode, dto.courseId);
+            finalPrice = couponResult.finalPrice;
+            couponCode = couponResult.code;
+        }
+        const amountInPaise = Math.round(finalPrice * 100);
         const razorpayOrder = await this.razorpay.orders.create({
             amount: amountInPaise,
             currency: 'INR',
@@ -118,9 +125,10 @@ let PaymentsService = class PaymentsService {
                 userId,
                 courseId: dto.courseId,
                 orderId: razorpayOrder.id,
-                amount: course.price,
+                amount: finalPrice,
                 currency: 'INR',
                 status: client_1.PaymentStatus.PENDING,
+                couponCode,
             },
         });
         return {
@@ -160,7 +168,7 @@ let PaymentsService = class PaymentsService {
             });
             throw new common_1.BadRequestException('Invalid payment signature');
         }
-        const [updatedPayment] = await this.prisma.$transaction([
+        const transactionOps = [
             this.prisma.payment.update({
                 where: { orderId: razorpay_order_id },
                 data: {
@@ -174,7 +182,14 @@ let PaymentsService = class PaymentsService {
                     courseId: payment.courseId,
                 },
             }),
-        ]);
+        ];
+        if (payment.couponCode) {
+            transactionOps.push(this.prisma.coupon.update({
+                where: { code: payment.couponCode },
+                data: { usedCount: { increment: 1 } },
+            }));
+        }
+        const [updatedPayment] = await this.prisma.$transaction(transactionOps);
         return {
             message: 'Payment verified and enrolled successfully',
             payment: {
@@ -223,12 +238,12 @@ let PaymentsService = class PaymentsService {
         });
     }
     async handleWebhook(body, signature) {
-        const keySecret = this.configService.get('RAZORPAY_KEY_SECRET');
-        if (!keySecret) {
+        const webhookSecret = this.configService.get('RAZORPAY_WEBHOOK_SECRET');
+        if (!webhookSecret) {
             throw new common_1.BadRequestException('Webhook secret not configured');
         }
         const expectedSignature = crypto
-            .createHmac('sha256', keySecret)
+            .createHmac('sha256', webhookSecret)
             .update(JSON.stringify(body))
             .digest('hex');
         if (expectedSignature !== signature) {
@@ -244,7 +259,7 @@ let PaymentsService = class PaymentsService {
                 where: { orderId },
             });
             if (payment && payment.status !== client_1.PaymentStatus.PAID) {
-                await this.prisma.$transaction([
+                const transactionOps = [
                     this.prisma.payment.update({
                         where: { orderId },
                         data: {
@@ -265,7 +280,14 @@ let PaymentsService = class PaymentsService {
                             courseId: payment.courseId,
                         },
                     }),
-                ]);
+                ];
+                if (payment.couponCode) {
+                    transactionOps.push(this.prisma.coupon.update({
+                        where: { code: payment.couponCode },
+                        data: { usedCount: { increment: 1 } },
+                    }));
+                }
+                await this.prisma.$transaction(transactionOps);
             }
         }
         else if (event === 'payment.failed') {

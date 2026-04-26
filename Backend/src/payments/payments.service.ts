@@ -85,8 +85,18 @@ export class PaymentsService {
       );
     }
 
+    // Calculate price (apply coupon if provided)
+    let finalPrice = course.price;
+    let couponCode: string | null = null;
+
+    if (dto.couponCode) {
+      const couponResult = await this.applyCoupon(dto.couponCode, dto.courseId);
+      finalPrice = couponResult.finalPrice;
+      couponCode = couponResult.code;
+    }
+
     // Create Razorpay order
-    const amountInPaise = Math.round(course.price * 100); // Razorpay expects paise
+    const amountInPaise = Math.round(finalPrice * 100); // Razorpay expects paise
 
     const razorpayOrder = await this.razorpay.orders.create({
       amount: amountInPaise,
@@ -99,15 +109,16 @@ export class PaymentsService {
       },
     });
 
-    // Save payment record
+    // Save payment record (including couponCode if applied)
     await this.prisma.payment.create({
       data: {
         userId,
         courseId: dto.courseId,
         orderId: razorpayOrder.id,
-        amount: course.price,
+        amount: finalPrice,
         currency: 'INR',
         status: PaymentStatus.PENDING,
+        couponCode,
       },
     });
 
@@ -163,8 +174,8 @@ export class PaymentsService {
       throw new BadRequestException('Invalid payment signature');
     }
 
-    // Payment verified — update status and auto-enroll
-    const [updatedPayment] = await this.prisma.$transaction([
+    // Payment verified — update status, auto-enroll, and increment coupon usage
+    const transactionOps: any[] = [
       // Mark payment as paid
       this.prisma.payment.update({
         where: { orderId: razorpay_order_id },
@@ -181,7 +192,19 @@ export class PaymentsService {
           courseId: payment.courseId,
         },
       }),
-    ]);
+    ];
+
+    // Increment coupon usedCount if a coupon was applied
+    if (payment.couponCode) {
+      transactionOps.push(
+        this.prisma.coupon.update({
+          where: { code: payment.couponCode },
+          data: { usedCount: { increment: 1 } },
+        }),
+      );
+    }
+
+    const [updatedPayment] = await this.prisma.$transaction(transactionOps);
 
     return {
       message: 'Payment verified and enrolled successfully',
@@ -236,15 +259,17 @@ export class PaymentsService {
   }
 
   // ─── Razorpay Webhook ────────────────────────────────
+  // Uses RAZORPAY_WEBHOOK_SECRET (set in Razorpay Dashboard),
+  // NOT the API key secret.
   async handleWebhook(body: any, signature: string) {
-    const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
-    if (!keySecret) {
+    const webhookSecret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
+    if (!webhookSecret) {
       throw new BadRequestException('Webhook secret not configured');
     }
 
-    // Verify webhook signature
+    // Verify webhook signature using the dedicated webhook secret
     const expectedSignature = crypto
-      .createHmac('sha256', keySecret)
+      .createHmac('sha256', webhookSecret)
       .update(JSON.stringify(body))
       .digest('hex');
 
@@ -264,7 +289,7 @@ export class PaymentsService {
       });
 
       if (payment && payment.status !== PaymentStatus.PAID) {
-        await this.prisma.$transaction([
+        const transactionOps: any[] = [
           this.prisma.payment.update({
             where: { orderId },
             data: {
@@ -285,7 +310,19 @@ export class PaymentsService {
               courseId: payment.courseId,
             },
           }),
-        ]);
+        ];
+
+        // Increment coupon usedCount if a coupon was applied
+        if (payment.couponCode) {
+          transactionOps.push(
+            this.prisma.coupon.update({
+              where: { code: payment.couponCode },
+              data: { usedCount: { increment: 1 } },
+            }),
+          );
+        }
+
+        await this.prisma.$transaction(transactionOps);
       }
     } else if (event === 'payment.failed') {
       const orderId = payload.order_id;

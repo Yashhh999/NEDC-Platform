@@ -9,26 +9,25 @@ import { Trash2, Eye, Plus } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function AdminCoursesPage() {
-  const { token } = useAuth();
+  useAuth();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
     fetch(`${API_BASE}/courses/admin/all`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((r) => r.json())
       .then((d) => setCourses(d.data || d || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const deleteCourse = async (id: string) => {
     if (!confirm("Delete this course?")) return;
     await fetch(`${API_BASE}/courses/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setCourses((prev) => prev.filter((c) => c.id !== id));
   };

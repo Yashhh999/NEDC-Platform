@@ -10,7 +10,7 @@ import { Plus, Trash2, Image, X } from "lucide-react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export default function AdminGalleryPage() {
-  const { token } = useAuth();
+  useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -30,7 +30,8 @@ export default function AdminGalleryPage() {
     e.preventDefault();
     await fetch(`${API_BASE}/gallery`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json"},
+        credentials: "include",
       body: JSON.stringify(form),
     });
     setForm({ title: "", imageUrl: "", description: "" });
@@ -42,7 +43,7 @@ export default function AdminGalleryPage() {
     if (!confirm("Delete this gallery item?")) return;
     await fetch(`${API_BASE}/gallery/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
