@@ -10,7 +10,7 @@ export declare class PaymentsController {
         email: string;
         role: string;
     }, dto: CreateOrderDto): Promise<{
-        orderId: any;
+        orderId: string;
         amount: number;
         currency: string;
         courseTitle: string;
@@ -23,11 +23,11 @@ export declare class PaymentsController {
     }, dto: VerifyPaymentDto): Promise<{
         message: string;
         payment: {
-            id: any;
-            orderId: any;
-            paymentId: any;
-            amount: any;
-            status: any;
+            id: string;
+            orderId: string;
+            paymentId: string | null;
+            amount: number;
+            status: import(".prisma/client").$Enums.PaymentStatus;
         };
     }>;
     getMyPayments(user: {

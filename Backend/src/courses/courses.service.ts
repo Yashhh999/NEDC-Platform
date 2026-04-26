@@ -82,8 +82,8 @@ export class CoursesService {
 
   // ─── Homepage Data (public) ─────────────────────────────
   async getHomepageData() {
-    const [featuredCourses, totalCourses, totalEnrollments] =
-      await Promise.all([
+    const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all(
+      [
         this.prisma.course.findMany({
           where: { published: true, isFeatured: true },
           take: 4,
@@ -94,7 +94,8 @@ export class CoursesService {
         }),
         this.prisma.course.count({ where: { published: true } }),
         this.prisma.enrollment.count(),
-      ]);
+      ],
+    );
 
     // If fewer than 4 featured, backfill with bestsellers or recent
     let courses = featuredCourses;

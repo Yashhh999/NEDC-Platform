@@ -48,11 +48,11 @@ const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const crypto = __importStar(require("crypto"));
-const Razorpay = require('razorpay');
+const Razorpay = require("razorpay");
 let PaymentsService = class PaymentsService {
     prisma;
     configService;
-    razorpay;
+    razorpay = null;
     constructor(prisma, configService) {
         this.prisma = prisma;
         this.configService = configService;
@@ -189,7 +189,8 @@ let PaymentsService = class PaymentsService {
                 data: { usedCount: { increment: 1 } },
             }));
         }
-        const [updatedPayment] = await this.prisma.$transaction(transactionOps);
+        const results = await this.prisma.$transaction(transactionOps);
+        const updatedPayment = results[0];
         return {
             message: 'Payment verified and enrolled successfully',
             payment: {
@@ -259,7 +260,7 @@ let PaymentsService = class PaymentsService {
                 where: { orderId },
             });
             if (payment && payment.status !== client_1.PaymentStatus.PAID) {
-                const transactionOps = [
+                const txOps = [
                     this.prisma.payment.update({
                         where: { orderId },
                         data: {
@@ -282,12 +283,12 @@ let PaymentsService = class PaymentsService {
                     }),
                 ];
                 if (payment.couponCode) {
-                    transactionOps.push(this.prisma.coupon.update({
+                    txOps.push(this.prisma.coupon.update({
                         where: { code: payment.couponCode },
                         data: { usedCount: { increment: 1 } },
                     }));
                 }
-                await this.prisma.$transaction(transactionOps);
+                await this.prisma.$transaction(txOps);
             }
         }
         else if (event === 'payment.failed') {

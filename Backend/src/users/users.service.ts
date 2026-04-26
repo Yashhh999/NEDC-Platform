@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -121,7 +121,7 @@ export class UsersService {
 
     const updateData: Prisma.UserUpdateInput = {};
     if (data.email) updateData.email = data.email;
-    if (data.role) updateData.role = data.role as any;
+    if (data.role) updateData.role = data.role as Role;
 
     return this.prisma.user.update({
       where: { id },

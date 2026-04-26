@@ -8,16 +8,45 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 
-// Razorpay doesn't have official TS types, so we use require
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Razorpay = require('razorpay');
+// ─── Razorpay types (no official @types package) ─────
+interface RazorpayOrder {
+  id: string;
+  amount: number;
+  currency: string;
+}
+
+interface RazorpayInstance {
+  orders: {
+    create(opts: {
+      amount: number;
+      currency: string;
+      receipt: string;
+      notes?: Record<string, string>;
+    }): Promise<RazorpayOrder>;
+  };
+}
+
+interface WebhookPayload {
+  event: string;
+  payload?: {
+    payment?: {
+      entity?: {
+        id: string;
+        order_id: string;
+      };
+    };
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import Razorpay = require('razorpay');
 
 @Injectable()
 export class PaymentsService {
-  private razorpay: any;
+  private razorpay: RazorpayInstance | null = null;
 
   constructor(
     private prisma: PrismaService,
@@ -30,7 +59,7 @@ export class PaymentsService {
       this.razorpay = new Razorpay({
         key_id: keyId,
         key_secret: keySecret,
-      });
+      }) as RazorpayInstance;
     }
   }
 
@@ -98,7 +127,7 @@ export class PaymentsService {
     // Create Razorpay order
     const amountInPaise = Math.round(finalPrice * 100); // Razorpay expects paise
 
-    const razorpayOrder = await this.razorpay.orders.create({
+    const razorpayOrder: RazorpayOrder = await this.razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
@@ -175,7 +204,7 @@ export class PaymentsService {
     }
 
     // Payment verified — update status, auto-enroll, and increment coupon usage
-    const transactionOps: any[] = [
+    const transactionOps: Prisma.PrismaPromise<any>[] = [
       // Mark payment as paid
       this.prisma.payment.update({
         where: { orderId: razorpay_order_id },
@@ -204,7 +233,14 @@ export class PaymentsService {
       );
     }
 
-    const [updatedPayment] = await this.prisma.$transaction(transactionOps);
+    const results = await this.prisma.$transaction(transactionOps);
+    const updatedPayment = results[0] as unknown as {
+      id: string;
+      orderId: string;
+      paymentId: string | null;
+      amount: number;
+      status: PaymentStatus;
+    };
 
     return {
       message: 'Payment verified and enrolled successfully',
@@ -261,8 +297,10 @@ export class PaymentsService {
   // ─── Razorpay Webhook ────────────────────────────────
   // Uses RAZORPAY_WEBHOOK_SECRET (set in Razorpay Dashboard),
   // NOT the API key secret.
-  async handleWebhook(body: any, signature: string) {
-    const webhookSecret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
+  async handleWebhook(body: WebhookPayload, signature: string) {
+    const webhookSecret = this.configService.get<string>(
+      'RAZORPAY_WEBHOOK_SECRET',
+    );
     if (!webhookSecret) {
       throw new BadRequestException('Webhook secret not configured');
     }
@@ -289,7 +327,7 @@ export class PaymentsService {
       });
 
       if (payment && payment.status !== PaymentStatus.PAID) {
-        const transactionOps: any[] = [
+        const txOps: Prisma.PrismaPromise<any>[] = [
           this.prisma.payment.update({
             where: { orderId },
             data: {
@@ -314,7 +352,7 @@ export class PaymentsService {
 
         // Increment coupon usedCount if a coupon was applied
         if (payment.couponCode) {
-          transactionOps.push(
+          txOps.push(
             this.prisma.coupon.update({
               where: { code: payment.couponCode },
               data: { usedCount: { increment: 1 } },
@@ -322,7 +360,7 @@ export class PaymentsService {
           );
         }
 
-        await this.prisma.$transaction(transactionOps);
+        await this.prisma.$transaction(txOps);
       }
     } else if (event === 'payment.failed') {
       const orderId = payload.order_id;
