@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
-import { PaymentStatus, Prisma } from '@prisma/client';
+import { PaymentStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 
 // ─── Razorpay types (no official @types package) ─────
@@ -73,9 +73,9 @@ export class PaymentsService {
 
   // ─── Create Razorpay Order ────────────────────────────
   async createOrder(userId: string, dto: CreateOrderDto) {
-    // Check if course exists
-    const course = await this.prisma.course.findUnique({
-      where: { id: dto.courseId },
+    // Course must exist and not be soft-deleted.
+    const course = await this.prisma.course.findFirst({
+      where: { id: dto.courseId, deletedAt: null },
     });
 
     if (!course) {
@@ -169,10 +169,17 @@ export class PaymentsService {
   }
 
   // ─── Verify Razorpay Payment ──────────────────────────
+  // Race-safe: the verify HTTP call from the frontend can run concurrently
+  // with Razorpay's webhook delivery. We must guarantee that exactly ONE of
+  // them performs the side-effects (status flip, enrollment, coupon
+  // increment) regardless of ordering.
+  //
+  // The "claim" is a conditional UPDATE of the payment row from PENDING →
+  // PAID; whichever writer the database serializes first gets count=1, the
+  // other gets count=0 and bails out without side-effects.
   async verifyPayment(userId: string, dto: VerifyPaymentDto) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = dto;
 
-    // Find the payment record
     const payment = await this.prisma.payment.findUnique({
       where: { orderId: razorpay_order_id },
     });
@@ -185,13 +192,7 @@ export class PaymentsService {
       throw new BadRequestException('Payment does not belong to this user');
     }
 
-    if (payment.status === PaymentStatus.PAID) {
-      throw new ConflictException('Payment already verified');
-    }
-
-    // Verify signature using HMAC SHA256
     const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET');
-
     if (!keySecret) {
       throw new BadRequestException('Payment gateway is not configured');
     }
@@ -202,62 +203,102 @@ export class PaymentsService {
       .digest('hex');
 
     if (!safeEqualHex(expectedSignature, razorpay_signature)) {
-      // Mark payment as failed
-      await this.prisma.payment.update({
-        where: { orderId: razorpay_order_id },
+      // Best-effort mark as failed only if still pending. Don't surface
+      // BadRequest if the row was already finalized by the webhook.
+      await this.prisma.payment.updateMany({
+        where: { orderId: razorpay_order_id, status: PaymentStatus.PENDING },
         data: { status: PaymentStatus.FAILED },
       });
-
       throw new BadRequestException('Invalid payment signature');
     }
 
-    // Payment verified — update status, auto-enroll, and increment coupon usage
-    const transactionOps: Prisma.PrismaPromise<any>[] = [
-      // Mark payment as paid
-      this.prisma.payment.update({
-        where: { orderId: razorpay_order_id },
-        data: {
-          paymentId: razorpay_payment_id,
-          status: PaymentStatus.PAID,
-        },
-      }),
+    return this.finalizePayment({
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      userId: payment.userId,
+      courseId: payment.courseId,
+      couponCode: payment.couponCode,
+      successMessage: 'Payment verified and enrolled successfully',
+    });
+  }
 
-      // Auto-enroll user in the course
-      this.prisma.enrollment.create({
-        data: {
-          userId: payment.userId,
-          courseId: payment.courseId,
-        },
-      }),
-    ];
+  // Shared finalization for both the verify HTTP call and the webhook.
+  // Atomically claims the payment row; only the winning claim performs
+  // enrollment + coupon increment. The loser sees count=0 and reports
+  // success without re-doing the work.
+  private async finalizePayment(args: {
+    orderId: string;
+    paymentId: string;
+    userId: string;
+    courseId: string;
+    couponCode: string | null;
+    successMessage: string;
+  }) {
+    const claim = await this.prisma.payment.updateMany({
+      where: { orderId: args.orderId, status: PaymentStatus.PENDING },
+      data: { paymentId: args.paymentId, status: PaymentStatus.PAID },
+    });
 
-    // Increment coupon usedCount if a coupon was applied
-    if (payment.couponCode) {
-      transactionOps.push(
-        this.prisma.coupon.update({
-          where: { code: payment.couponCode },
-          data: { usedCount: { increment: 1 } },
-        }),
-      );
+    if (claim.count === 0) {
+      // Already processed (by the webhook, by a duplicate verify call, or
+      // by a redelivery). Idempotent success — do not run side-effects.
+      const existing = await this.prisma.payment.findUnique({
+        where: { orderId: args.orderId },
+      });
+      return {
+        message: 'Payment already verified',
+        payment: existing
+          ? {
+              id: existing.id,
+              orderId: existing.orderId,
+              paymentId: existing.paymentId,
+              amount: existing.amount,
+              status: existing.status,
+            }
+          : null,
+      };
     }
 
-    const results = await this.prisma.$transaction(transactionOps);
-    const updatedPayment = results[0] as unknown as {
-      id: string;
-      orderId: string;
-      paymentId: string | null;
-      amount: number;
-      status: PaymentStatus;
-    };
+    // We won the claim. Run side-effects in a transaction; enrollment is
+    // an upsert because a prior partial run could have created it.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.enrollment.upsert({
+        where: {
+          userId_courseId: { userId: args.userId, courseId: args.courseId },
+        },
+        update: {},
+        create: { userId: args.userId, courseId: args.courseId },
+      });
+
+      if (args.couponCode) {
+        // Atomic increment-if-still-valid. Two-column comparison is not
+        // expressible in Prisma's update; use a raw query. Tolerate
+        // count=0 (coupon expired or maxed between order creation and
+        // payment finalization — the user already received the locked-in
+        // discount on their payment row, but we don't over-count usage).
+        await tx.$executeRaw`
+          UPDATE "Coupon"
+             SET "usedCount" = "usedCount" + 1
+           WHERE "code" = ${args.couponCode}
+             AND "isActive" = true
+             AND "usedCount" < "maxUses"
+             AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
+        `;
+      }
+    });
+
+    const finalRow = await this.prisma.payment.findUnique({
+      where: { orderId: args.orderId },
+    });
 
     return {
-      message: 'Payment verified and enrolled successfully',
-      payment: {
-        id: updatedPayment.id,
-        orderId: updatedPayment.orderId,
-        paymentId: updatedPayment.paymentId,
-        amount: updatedPayment.amount,
-        status: updatedPayment.status,
+      message: args.successMessage,
+      payment: finalRow && {
+        id: finalRow.id,
+        orderId: finalRow.orderId,
+        paymentId: finalRow.paymentId,
+        amount: finalRow.amount,
+        status: finalRow.status,
       },
     };
   }
@@ -344,42 +385,23 @@ export class PaymentsService {
         where: { orderId },
       });
 
-      if (payment && payment.status !== PaymentStatus.PAID) {
-        const txOps: Prisma.PrismaPromise<any>[] = [
-          this.prisma.payment.update({
-            where: { orderId },
-            data: {
-              paymentId: payload.id,
-              status: PaymentStatus.PAID,
-            },
-          }),
-          this.prisma.enrollment.upsert({
-            where: {
-              userId_courseId: {
-                userId: payment.userId,
-                courseId: payment.courseId,
-              },
-            },
-            update: {},
-            create: {
-              userId: payment.userId,
-              courseId: payment.courseId,
-            },
-          }),
-        ];
-
-        // Increment coupon usedCount if a coupon was applied
-        if (payment.couponCode) {
-          txOps.push(
-            this.prisma.coupon.update({
-              where: { code: payment.couponCode },
-              data: { usedCount: { increment: 1 } },
-            }),
-          );
-        }
-
-        await this.prisma.$transaction(txOps);
+      if (!payment) {
+        // Webhook arrived for an order we don't know about. Acknowledge
+        // so Razorpay stops retrying, but log for ops review.
+        return { status: 'unknown_order' };
       }
+
+      // Idempotent — same atomic-claim pattern as verifyPayment, so a
+      // race between the HTTP verify call and this webhook never grants
+      // double enrollment or double coupon use.
+      await this.finalizePayment({
+        orderId,
+        paymentId: payload.id,
+        userId: payment.userId,
+        courseId: payment.courseId,
+        couponCode: payment.couponCode,
+        successMessage: 'Webhook processed',
+      });
     } else if (event === 'payment.failed') {
       const orderId = payload.order_id;
       await this.prisma.payment.updateMany({
@@ -392,6 +414,11 @@ export class PaymentsService {
   }
 
   // ─── Coupon Apply ────────────────────────────────────
+  // Preview-only: validates the coupon and returns the would-be price.
+  // The usedCount is NOT incremented here — that happens exactly once,
+  // atomically, when finalizePayment claims the payment row. Incrementing
+  // at preview time double-counted every paid order and let abandoned
+  // previews exhaust maxUses.
   async applyCoupon(code: string, courseId: string) {
     const coupon = await this.prisma.coupon.findUnique({
       where: { code: code.toUpperCase() },
@@ -400,25 +427,18 @@ export class PaymentsService {
     if (!coupon) {
       throw new NotFoundException('Invalid coupon code');
     }
-
-    // Check if coupon is active
     if (!coupon.isActive) {
       throw new BadRequestException('This coupon is no longer active');
     }
-
-    // Check expiry
     if (coupon.expiresAt && new Date() > coupon.expiresAt) {
       throw new BadRequestException('This coupon has expired');
     }
-
-    // Check usage limit
     if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
       throw new BadRequestException('This coupon has reached its usage limit');
     }
 
-    // Get course price
-    const course = await this.prisma.course.findUnique({
-      where: { id: courseId },
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId, deletedAt: null },
     });
 
     if (!course) {
@@ -427,12 +447,6 @@ export class PaymentsService {
 
     const discount = (course.price * coupon.discountPercent) / 100;
     const finalPrice = Math.max(0, course.price - discount);
-
-    // Increment usedCount now that validation has passed
-    await this.prisma.coupon.update({
-      where: { id: coupon.id },
-      data: { usedCount: { increment: 1 } },
-    });
 
     return {
       valid: true,

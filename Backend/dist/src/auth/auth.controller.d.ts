@@ -28,9 +28,11 @@ export declare class AuthController {
             emailVerified: boolean;
         };
     }>;
-    logout(res: Response): {
+    logout(user: {
+        id: string;
+    }, res: Response): Promise<{
         message: string;
-    };
+    }>;
     getMe(user: {
         id: string;
         email: string;

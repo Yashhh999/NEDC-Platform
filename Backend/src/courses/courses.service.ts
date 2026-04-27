@@ -38,7 +38,11 @@ export class CoursesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
+    // Admin listing also hides soft-deleted courses by default; an admin
+    // who wants the archive can call findAllIncludingDeleted (not exposed
+    // yet).
     return this.prisma.course.findMany({
+      where: { deletedAt: null },
       include: {
         modules: {
           include: { lessons: { orderBy: { order: 'asc' } } },
@@ -52,7 +56,7 @@ export class CoursesService {
 
   async findPublished() {
     return this.prisma.course.findMany({
-      where: { published: true },
+      where: { published: true, deletedAt: null },
       include: {
         _count: { select: { enrollments: true, modules: true } },
       },
@@ -62,8 +66,8 @@ export class CoursesService {
 
   // Public — no lesson content or video URLs leak.
   async findOne(id: string) {
-    const course = await this.prisma.course.findUnique({
-      where: { id },
+    const course = await this.prisma.course.findFirst({
+      where: { id, deletedAt: null },
       include: {
         modules: {
           include: {
@@ -95,8 +99,8 @@ export class CoursesService {
       }
     }
 
-    const course = await this.prisma.course.findUnique({
-      where: { id },
+    const course = await this.prisma.course.findFirst({
+      where: { id, deletedAt: null },
       include: {
         modules: {
           include: {
@@ -114,8 +118,8 @@ export class CoursesService {
   }
 
   async findOneAdmin(id: string) {
-    const course = await this.prisma.course.findUnique({
-      where: { id },
+    const course = await this.prisma.course.findFirst({
+      where: { id, deletedAt: null },
       include: {
         modules: {
           include: {
@@ -140,12 +144,12 @@ export class CoursesService {
   async getHomepageData() {
     const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all([
       this.prisma.course.findMany({
-        where: { published: true, isFeatured: true },
+        where: { published: true, isFeatured: true, deletedAt: null },
         take: 4,
         include: { _count: { select: { enrollments: true, modules: true } } },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.course.count({ where: { published: true } }),
+      this.prisma.course.count({ where: { published: true, deletedAt: null } }),
       this.prisma.enrollment.count(),
     ]);
 
@@ -154,6 +158,7 @@ export class CoursesService {
       const remaining = await this.prisma.course.findMany({
         where: {
           published: true,
+          deletedAt: null,
           id: { notIn: courses.map((c) => c.id) },
         },
         take: 4 - courses.length,
@@ -177,15 +182,25 @@ export class CoursesService {
   }
 
   async update(id: string, dto: UpdateCourseDto) {
-    const course = await this.prisma.course.findUnique({ where: { id } });
+    const course = await this.prisma.course.findFirst({
+      where: { id, deletedAt: null },
+    });
     if (!course) throw new NotFoundException('Course not found');
     return this.prisma.course.update({ where: { id }, data: dto });
   }
 
+  // Soft delete. Hard-delete is rejected by Postgres (Restrict) when there
+  // are payments or certificates referencing the course; soft-delete also
+  // hides the course from listings and prevents new enrollments.
   async remove(id: string) {
-    const course = await this.prisma.course.findUnique({ where: { id } });
+    const course = await this.prisma.course.findFirst({
+      where: { id, deletedAt: null },
+    });
     if (!course) throw new NotFoundException('Course not found');
-    await this.prisma.course.delete({ where: { id } });
+    await this.prisma.course.update({
+      where: { id },
+      data: { deletedAt: new Date(), published: false },
+    });
     return { message: 'Course deleted successfully' };
   }
 

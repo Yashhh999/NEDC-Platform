@@ -36,6 +36,7 @@ export declare class AuthService {
             emailVerified: boolean;
         };
     }>;
+    revokeSessions(userId: string): Promise<void>;
     verifyEmail(token: string, ctx: AuthContext): Promise<{
         message: string;
     }>;

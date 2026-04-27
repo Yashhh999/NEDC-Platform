@@ -19,6 +19,7 @@ export declare class EnrollmentsService {
                 isFeatured: boolean;
                 isBestseller: boolean;
                 published: boolean;
+                deletedAt: Date | null;
             };
         } & {
             id: string;
@@ -41,6 +42,7 @@ export declare class EnrollmentsService {
             isFeatured: boolean;
             isBestseller: boolean;
             published: boolean;
+            deletedAt: Date | null;
         };
     } & {
         id: string;

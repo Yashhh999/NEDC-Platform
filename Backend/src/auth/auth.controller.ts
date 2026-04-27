@@ -64,9 +64,17 @@ export class AuthController {
     return result;
   }
 
+  // Logout requires a valid session so we can revoke it server-side.
+  // Bumping tokenVersion invalidates any other devices that still hold
+  // the same JWT (Authorization header replays, stolen cookies, etc.).
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@Res({ passthrough: true }) res: Response) {
+  @UseGuards(JwtAuthGuard)
+  async logout(
+    @CurrentUser() user: { id: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.revokeSessions(user.id);
     const opts = sessionCookieOptions();
     res.clearCookie(SESSION_COOKIE, {
       httpOnly: opts.httpOnly,

@@ -123,7 +123,7 @@ export class AuthService {
       throw new ForbiddenException('Please verify your email before logging in.');
     }
 
-    await this.prisma.user.update({
+    const refreshed = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         loginFailures: 0,
@@ -131,15 +131,31 @@ export class AuthService {
         lastLoginAt: new Date(),
         lastLoginIp: ctx.ip ?? null,
       },
+      select: { tokenVersion: true },
     });
 
     await this.audit(AuthEvent.LOGIN_SUCCESS, ctx, { userId: user.id, email });
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      ver: refreshed.tokenVersion,
+    };
     return {
       access_token: this.jwtService.sign(payload),
       user: this.publicUser(user),
     };
+  }
+
+  // ── Session revocation ─────────────────────────────────
+  // Bumps the user's tokenVersion. JwtStrategy then refuses any pre-existing
+  // JWT for this user. Used for logout, password reset, and role change.
+  async revokeSessions(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
   }
 
   // ── Email verification ──────────────────────────────────
@@ -244,6 +260,9 @@ export class AuthService {
         passwordResetTokenExpires: null,
         loginFailures: 0,
         lockedUntil: null,
+        // Revoke every existing JWT for this user. Whoever held the old
+        // password (legitimate user or attacker) is signed out everywhere.
+        tokenVersion: { increment: 1 },
       },
     });
 

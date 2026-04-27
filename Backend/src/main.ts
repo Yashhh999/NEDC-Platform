@@ -29,6 +29,25 @@ function assertSecrets(logger: Logger) {
     throw new Error('DATABASE_URL must be set');
   }
 
+  // Production foot-gun guards. These flags are useful in development but
+  // catastrophic if accidentally set in production:
+  //  - EMAIL_TOKEN_DEBUG=true logs verification/reset tokens to stdout,
+  //    leaking them to anyone with log access.
+  //  - PGSSL_DISABLE=true turns off TLS to the database.
+  // Refuse to boot rather than start in a degraded posture.
+  if (process.env.NODE_ENV === 'production') {
+    if (process.env.EMAIL_TOKEN_DEBUG === 'true') {
+      throw new Error(
+        'EMAIL_TOKEN_DEBUG=true is not allowed in production (would leak verification/reset tokens to logs). Unset it.',
+      );
+    }
+    if (process.env.PGSSL_DISABLE === 'true') {
+      throw new Error(
+        'PGSSL_DISABLE=true is not allowed in production (would disable database TLS). Unset it.',
+      );
+    }
+  }
+
   for (const key of [
     'RAZORPAY_KEY_ID',
     'RAZORPAY_KEY_SECRET',

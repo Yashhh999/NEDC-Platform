@@ -22,8 +22,9 @@ export declare class PaymentsService {
             paymentId: string | null;
             amount: number;
             status: import(".prisma/client").$Enums.PaymentStatus;
-        };
+        } | null;
     }>;
+    private finalizePayment;
     getMyPayments(userId: string): Promise<({
         course: {
             id: string;

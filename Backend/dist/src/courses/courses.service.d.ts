@@ -44,6 +44,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     })[]>;
     findPublished(): Promise<({
         _count: {
@@ -63,6 +64,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     })[]>;
     findOne(id: string): Promise<{
         _count: {
@@ -97,6 +99,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     findOneEnrolled(id: string, user: {
         id: string;
@@ -135,6 +138,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     findOneAdmin(id: string): Promise<{
         enrollments: ({
@@ -185,6 +189,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     getHomepageData(): Promise<{
         courses: ({
@@ -205,6 +210,7 @@ export declare class CoursesService {
             isFeatured: boolean;
             isBestseller: boolean;
             published: boolean;
+            deletedAt: Date | null;
         })[];
         stats: {
             totalCourses: number;
@@ -224,6 +230,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     update(id: string, dto: UpdateCourseDto): Promise<{
         id: string;
@@ -238,6 +245,7 @@ export declare class CoursesService {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     remove(id: string): Promise<{
         message: string;

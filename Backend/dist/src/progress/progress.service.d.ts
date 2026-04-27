@@ -44,6 +44,7 @@ export declare class ProgressService {
             isFeatured: boolean;
             isBestseller: boolean;
             published: boolean;
+            deletedAt: Date | null;
         };
         totalLessons: number;
         completedLessons: number;

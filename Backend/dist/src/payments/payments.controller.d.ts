@@ -29,7 +29,7 @@ export declare class PaymentsController {
             paymentId: string | null;
             amount: number;
             status: import(".prisma/client").$Enums.PaymentStatus;
-        };
+        } | null;
     }>;
     getMyPayments(user: {
         id: string;

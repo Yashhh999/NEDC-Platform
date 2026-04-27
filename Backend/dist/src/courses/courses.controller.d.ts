@@ -26,6 +26,7 @@ export declare class CoursesController {
             isFeatured: boolean;
             isBestseller: boolean;
             published: boolean;
+            deletedAt: Date | null;
         })[];
         stats: {
             totalCourses: number;
@@ -50,6 +51,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     })[]>;
     findAll(): Promise<({
         _count: {
@@ -88,6 +90,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     })[]>;
     findOneAdmin(id: string): Promise<{
         enrollments: ({
@@ -138,6 +141,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     findOneEnrolled(user: {
         id: string;
@@ -177,6 +181,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     findOne(id: string): Promise<{
         _count: {
@@ -211,6 +216,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     create(dto: CreateCourseDto): Promise<{
         id: string;
@@ -225,6 +231,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     update(id: string, dto: UpdateCourseDto): Promise<{
         id: string;
@@ -239,6 +246,7 @@ export declare class CoursesController {
         isFeatured: boolean;
         isBestseller: boolean;
         published: boolean;
+        deletedAt: Date | null;
     }>;
     remove(id: string): Promise<{
         message: string;

@@ -18,8 +18,8 @@ let EnrollmentsService = class EnrollmentsService {
         this.prisma = prisma;
     }
     async enroll(userId, dto) {
-        const course = await this.prisma.course.findUnique({
-            where: { id: dto.courseId },
+        const course = await this.prisma.course.findFirst({
+            where: { id: dto.courseId, deletedAt: null },
         });
         if (!course) {
             throw new common_1.NotFoundException('Course not found');

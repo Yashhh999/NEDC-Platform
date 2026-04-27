@@ -23,6 +23,7 @@ export declare class EnrollmentsController {
                 isFeatured: boolean;
                 isBestseller: boolean;
                 published: boolean;
+                deletedAt: Date | null;
             };
         } & {
             id: string;
@@ -49,6 +50,7 @@ export declare class EnrollmentsController {
             isFeatured: boolean;
             isBestseller: boolean;
             published: boolean;
+            deletedAt: Date | null;
         };
     } & {
         id: string;

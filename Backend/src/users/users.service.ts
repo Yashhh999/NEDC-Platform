@@ -133,7 +133,12 @@ export class UsersService {
 
     const updateData: Prisma.UserUpdateInput = {};
     if (data.email) updateData.email = data.email;
-    if (data.role) updateData.role = data.role;
+    if (data.role && data.role !== user.role) {
+      updateData.role = data.role;
+      // Role change must take effect immediately — bump tokenVersion so
+      // existing JWTs (which encode the old role) stop validating.
+      updateData.tokenVersion = { increment: 1 };
+    }
 
     return this.prisma.user.update({
       where: { id },

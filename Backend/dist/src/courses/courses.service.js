@@ -37,6 +37,7 @@ let CoursesService = class CoursesService {
     }
     async findAll() {
         return this.prisma.course.findMany({
+            where: { deletedAt: null },
             include: {
                 modules: {
                     include: { lessons: { orderBy: { order: 'asc' } } },
@@ -49,7 +50,7 @@ let CoursesService = class CoursesService {
     }
     async findPublished() {
         return this.prisma.course.findMany({
-            where: { published: true },
+            where: { published: true, deletedAt: null },
             include: {
                 _count: { select: { enrollments: true, modules: true } },
             },
@@ -57,8 +58,8 @@ let CoursesService = class CoursesService {
         });
     }
     async findOne(id) {
-        const course = await this.prisma.course.findUnique({
-            where: { id },
+        const course = await this.prisma.course.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 modules: {
                     include: {
@@ -87,8 +88,8 @@ let CoursesService = class CoursesService {
                 throw new common_1.ForbiddenException('You are not enrolled in this course');
             }
         }
-        const course = await this.prisma.course.findUnique({
-            where: { id },
+        const course = await this.prisma.course.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 modules: {
                     include: {
@@ -106,8 +107,8 @@ let CoursesService = class CoursesService {
         return course;
     }
     async findOneAdmin(id) {
-        const course = await this.prisma.course.findUnique({
-            where: { id },
+        const course = await this.prisma.course.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 modules: {
                     include: {
@@ -131,12 +132,12 @@ let CoursesService = class CoursesService {
     async getHomepageData() {
         const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all([
             this.prisma.course.findMany({
-                where: { published: true, isFeatured: true },
+                where: { published: true, isFeatured: true, deletedAt: null },
                 take: 4,
                 include: { _count: { select: { enrollments: true, modules: true } } },
                 orderBy: { createdAt: 'desc' },
             }),
-            this.prisma.course.count({ where: { published: true } }),
+            this.prisma.course.count({ where: { published: true, deletedAt: null } }),
             this.prisma.enrollment.count(),
         ]);
         let courses = featuredCourses;
@@ -144,6 +145,7 @@ let CoursesService = class CoursesService {
             const remaining = await this.prisma.course.findMany({
                 where: {
                     published: true,
+                    deletedAt: null,
                     id: { notIn: courses.map((c) => c.id) },
                 },
                 take: 4 - courses.length,
@@ -164,16 +166,23 @@ let CoursesService = class CoursesService {
         return this.prisma.course.create({ data: dto });
     }
     async update(id, dto) {
-        const course = await this.prisma.course.findUnique({ where: { id } });
+        const course = await this.prisma.course.findFirst({
+            where: { id, deletedAt: null },
+        });
         if (!course)
             throw new common_1.NotFoundException('Course not found');
         return this.prisma.course.update({ where: { id }, data: dto });
     }
     async remove(id) {
-        const course = await this.prisma.course.findUnique({ where: { id } });
+        const course = await this.prisma.course.findFirst({
+            where: { id, deletedAt: null },
+        });
         if (!course)
             throw new common_1.NotFoundException('Course not found');
-        await this.prisma.course.delete({ where: { id } });
+        await this.prisma.course.update({
+            where: { id },
+            data: { deletedAt: new Date(), published: false },
+        });
         return { message: 'Course deleted successfully' };
     }
     async createModule(dto) {

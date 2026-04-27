@@ -73,8 +73,8 @@ let PaymentsService = class PaymentsService {
         }
     }
     async createOrder(userId, dto) {
-        const course = await this.prisma.course.findUnique({
-            where: { id: dto.courseId },
+        const course = await this.prisma.course.findFirst({
+            where: { id: dto.courseId, deletedAt: null },
         });
         if (!course) {
             throw new common_1.NotFoundException('Course not found');
@@ -157,9 +157,6 @@ let PaymentsService = class PaymentsService {
         if (payment.userId !== userId) {
             throw new common_1.BadRequestException('Payment does not belong to this user');
         }
-        if (payment.status === client_1.PaymentStatus.PAID) {
-            throw new common_1.ConflictException('Payment already verified');
-        }
         const keySecret = this.configService.get('RAZORPAY_KEY_SECRET');
         if (!keySecret) {
             throw new common_1.BadRequestException('Payment gateway is not configured');
@@ -169,43 +166,73 @@ let PaymentsService = class PaymentsService {
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest('hex');
         if (!safeEqualHex(expectedSignature, razorpay_signature)) {
-            await this.prisma.payment.update({
-                where: { orderId: razorpay_order_id },
+            await this.prisma.payment.updateMany({
+                where: { orderId: razorpay_order_id, status: client_1.PaymentStatus.PENDING },
                 data: { status: client_1.PaymentStatus.FAILED },
             });
             throw new common_1.BadRequestException('Invalid payment signature');
         }
-        const transactionOps = [
-            this.prisma.payment.update({
-                where: { orderId: razorpay_order_id },
-                data: {
-                    paymentId: razorpay_payment_id,
-                    status: client_1.PaymentStatus.PAID,
-                },
-            }),
-            this.prisma.enrollment.create({
-                data: {
-                    userId: payment.userId,
-                    courseId: payment.courseId,
-                },
-            }),
-        ];
-        if (payment.couponCode) {
-            transactionOps.push(this.prisma.coupon.update({
-                where: { code: payment.couponCode },
-                data: { usedCount: { increment: 1 } },
-            }));
+        return this.finalizePayment({
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            userId: payment.userId,
+            courseId: payment.courseId,
+            couponCode: payment.couponCode,
+            successMessage: 'Payment verified and enrolled successfully',
+        });
+    }
+    async finalizePayment(args) {
+        const claim = await this.prisma.payment.updateMany({
+            where: { orderId: args.orderId, status: client_1.PaymentStatus.PENDING },
+            data: { paymentId: args.paymentId, status: client_1.PaymentStatus.PAID },
+        });
+        if (claim.count === 0) {
+            const existing = await this.prisma.payment.findUnique({
+                where: { orderId: args.orderId },
+            });
+            return {
+                message: 'Payment already verified',
+                payment: existing
+                    ? {
+                        id: existing.id,
+                        orderId: existing.orderId,
+                        paymentId: existing.paymentId,
+                        amount: existing.amount,
+                        status: existing.status,
+                    }
+                    : null,
+            };
         }
-        const results = await this.prisma.$transaction(transactionOps);
-        const updatedPayment = results[0];
+        await this.prisma.$transaction(async (tx) => {
+            await tx.enrollment.upsert({
+                where: {
+                    userId_courseId: { userId: args.userId, courseId: args.courseId },
+                },
+                update: {},
+                create: { userId: args.userId, courseId: args.courseId },
+            });
+            if (args.couponCode) {
+                await tx.$executeRaw `
+          UPDATE "Coupon"
+             SET "usedCount" = "usedCount" + 1
+           WHERE "code" = ${args.couponCode}
+             AND "isActive" = true
+             AND "usedCount" < "maxUses"
+             AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
+        `;
+            }
+        });
+        const finalRow = await this.prisma.payment.findUnique({
+            where: { orderId: args.orderId },
+        });
         return {
-            message: 'Payment verified and enrolled successfully',
-            payment: {
-                id: updatedPayment.id,
-                orderId: updatedPayment.orderId,
-                paymentId: updatedPayment.paymentId,
-                amount: updatedPayment.amount,
-                status: updatedPayment.status,
+            message: args.successMessage,
+            payment: finalRow && {
+                id: finalRow.id,
+                orderId: finalRow.orderId,
+                paymentId: finalRow.paymentId,
+                amount: finalRow.amount,
+                status: finalRow.status,
             },
         };
     }
@@ -276,37 +303,17 @@ let PaymentsService = class PaymentsService {
             const payment = await this.prisma.payment.findUnique({
                 where: { orderId },
             });
-            if (payment && payment.status !== client_1.PaymentStatus.PAID) {
-                const txOps = [
-                    this.prisma.payment.update({
-                        where: { orderId },
-                        data: {
-                            paymentId: payload.id,
-                            status: client_1.PaymentStatus.PAID,
-                        },
-                    }),
-                    this.prisma.enrollment.upsert({
-                        where: {
-                            userId_courseId: {
-                                userId: payment.userId,
-                                courseId: payment.courseId,
-                            },
-                        },
-                        update: {},
-                        create: {
-                            userId: payment.userId,
-                            courseId: payment.courseId,
-                        },
-                    }),
-                ];
-                if (payment.couponCode) {
-                    txOps.push(this.prisma.coupon.update({
-                        where: { code: payment.couponCode },
-                        data: { usedCount: { increment: 1 } },
-                    }));
-                }
-                await this.prisma.$transaction(txOps);
+            if (!payment) {
+                return { status: 'unknown_order' };
             }
+            await this.finalizePayment({
+                orderId,
+                paymentId: payload.id,
+                userId: payment.userId,
+                courseId: payment.courseId,
+                couponCode: payment.couponCode,
+                successMessage: 'Webhook processed',
+            });
         }
         else if (event === 'payment.failed') {
             const orderId = payload.order_id;
@@ -333,18 +340,14 @@ let PaymentsService = class PaymentsService {
         if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
             throw new common_1.BadRequestException('This coupon has reached its usage limit');
         }
-        const course = await this.prisma.course.findUnique({
-            where: { id: courseId },
+        const course = await this.prisma.course.findFirst({
+            where: { id: courseId, deletedAt: null },
         });
         if (!course) {
             throw new common_1.NotFoundException('Course not found');
         }
         const discount = (course.price * coupon.discountPercent) / 100;
         const finalPrice = Math.max(0, course.price - discount);
-        await this.prisma.coupon.update({
-            where: { id: coupon.id },
-            data: { usedCount: { increment: 1 } },
-        });
         return {
             valid: true,
             code: coupon.code,

@@ -30,6 +30,7 @@ export declare class UsersController {
                 isFeatured: boolean;
                 isBestseller: boolean;
                 published: boolean;
+                deletedAt: Date | null;
             };
         } & {
             id: string;
@@ -90,6 +91,7 @@ export declare class UsersController {
                 isFeatured: boolean;
                 isBestseller: boolean;
                 published: boolean;
+                deletedAt: Date | null;
             };
         } & {
             id: string;

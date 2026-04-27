@@ -25,6 +25,14 @@ function assertSecrets(logger) {
     if (!process.env.DATABASE_URL) {
         throw new Error('DATABASE_URL must be set');
     }
+    if (process.env.NODE_ENV === 'production') {
+        if (process.env.EMAIL_TOKEN_DEBUG === 'true') {
+            throw new Error('EMAIL_TOKEN_DEBUG=true is not allowed in production (would leak verification/reset tokens to logs). Unset it.');
+        }
+        if (process.env.PGSSL_DISABLE === 'true') {
+            throw new Error('PGSSL_DISABLE=true is not allowed in production (would disable database TLS). Unset it.');
+        }
+    }
     for (const key of [
         'RAZORPAY_KEY_ID',
         'RAZORPAY_KEY_SECRET',

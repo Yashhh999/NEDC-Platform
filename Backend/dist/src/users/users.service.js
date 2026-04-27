@@ -129,8 +129,10 @@ let UsersService = class UsersService {
         const updateData = {};
         if (data.email)
             updateData.email = data.email;
-        if (data.role)
+        if (data.role && data.role !== user.role) {
             updateData.role = data.role;
+            updateData.tokenVersion = { increment: 1 };
+        }
         return this.prisma.user.update({
             where: { id },
             data: updateData,

@@ -129,7 +129,7 @@ let AuthService = AuthService_1 = class AuthService {
             });
             throw new common_1.ForbiddenException('Please verify your email before logging in.');
         }
-        await this.prisma.user.update({
+        const refreshed = await this.prisma.user.update({
             where: { id: user.id },
             data: {
                 loginFailures: 0,
@@ -137,13 +137,25 @@ let AuthService = AuthService_1 = class AuthService {
                 lastLoginAt: new Date(),
                 lastLoginIp: ctx.ip ?? null,
             },
+            select: { tokenVersion: true },
         });
         await this.audit(client_1.AuthEvent.LOGIN_SUCCESS, ctx, { userId: user.id, email });
-        const payload = { sub: user.id, email: user.email, role: user.role };
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+            ver: refreshed.tokenVersion,
+        };
         return {
             access_token: this.jwtService.sign(payload),
             user: this.publicUser(user),
         };
+    }
+    async revokeSessions(userId) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { tokenVersion: { increment: 1 } },
+        });
     }
     async verifyEmail(token, ctx) {
         const hash = this.hashToken(token);
@@ -228,6 +240,7 @@ let AuthService = AuthService_1 = class AuthService {
                 passwordResetTokenExpires: null,
                 loginFailures: 0,
                 lockedUntil: null,
+                tokenVersion: { increment: 1 },
             },
         });
         await this.audit(client_1.AuthEvent.PASSWORD_RESET_COMPLETE, ctx, {

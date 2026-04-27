@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const MIN_SECRET_LENGTH = 32;
 
@@ -13,9 +14,16 @@ function cookieOrHeaderExtractor(req: Request): string | null {
   return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 }
 
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+  ver: number;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
+  constructor(configService: ConfigService, private prisma: PrismaService) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('JWT_SECRET is not defined in environment variables');
@@ -41,11 +49,33 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; email: string; role: string }) {
+  // Always validate against the live DB row so:
+  //  - Role demotion takes effect on the next request, not at JWT expiry.
+  //  - Logout / password reset / explicit revocation invalidate the token
+  //    via tokenVersion mismatch.
+  // The cost is one indexed lookup per authenticated request — acceptable
+  // given the alternative is privilege persistence.
+  async validate(payload: JwtPayload) {
+    if (!payload?.sub || typeof payload.ver !== 'number') {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, role: true, tokenVersion: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Account no longer exists');
+    }
+    if (user.tokenVersion !== payload.ver) {
+      throw new UnauthorizedException('Session has been revoked');
+    }
+
     return {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role,
+      id: user.id,
+      email: user.email,
+      role: user.role,
     };
   }
 }

@@ -11,9 +11,9 @@ export class EnrollmentsService {
   constructor(private prisma: PrismaService) {}
 
   async enroll(userId: string, dto: CreateEnrollmentDto) {
-    // Check if course exists
-    const course = await this.prisma.course.findUnique({
-      where: { id: dto.courseId },
+    // Course must exist and not be soft-deleted.
+    const course = await this.prisma.course.findFirst({
+      where: { id: dto.courseId, deletedAt: null },
     });
 
     if (!course) {
