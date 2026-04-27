@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
-import { fetcher, API_BASE_URL } from "@/lib/api/fetcher";
+import { fetcher } from "@/lib/api/fetcher";
 import {
   ChevronDown,
   ChevronRight,
@@ -50,15 +50,13 @@ export default function CoursePlayerPage() {
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch course data (public endpoint)
+  // Fetch full course data — authenticated, gated to enrolled users + admins.
   useEffect(() => {
     if (!courseId) return;
-    fetch(`${API_BASE_URL}/courses/${courseId}`)
-      .then((r) => r.json())
+    fetcher<any>(`/courses/${courseId}/learn`)
       .then((d) => {
         const data = d.data || d;
         setCourse(data);
-        // Auto-expand all modules and select first lesson
         if (data.modules?.length > 0) {
           setExpandedModules(new Set(data.modules.map((m: Module) => m.id)));
           const firstLesson = data.modules[0]?.lessons?.[0];

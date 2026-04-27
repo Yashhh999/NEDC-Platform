@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnrollmentsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const enrollments_service_1 = require("./enrollments.service");
 const create_enrollment_dto_1 = require("./dto/create-enrollment.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
@@ -38,6 +39,7 @@ let EnrollmentsController = class EnrollmentsController {
 exports.EnrollmentsController = EnrollmentsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 10 } }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '@prisma/client';
 export declare class UsersService {
     private prisma;
     constructor(prisma: PrismaService);
@@ -79,16 +80,23 @@ export declare class UsersService {
     }>;
     updateProfile(userId: string, data: {
         email?: string;
+        name?: string;
+        phone?: string;
+        avatar?: string;
     }): Promise<{
+        name: string | null;
         email: string;
+        phone: string | null;
         id: string;
+        avatar: string | null;
         role: import(".prisma/client").$Enums.Role;
+        emailVerified: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;
     update(id: string, data: {
         email?: string;
-        role?: string;
+        role?: Role;
     }): Promise<{
         name: string | null;
         email: string;

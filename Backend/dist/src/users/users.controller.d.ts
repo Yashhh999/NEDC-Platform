@@ -1,4 +1,6 @@
 import { UsersService } from './users.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 export declare class UsersController {
     private usersService;
     constructor(usersService: UsersService);
@@ -50,12 +52,14 @@ export declare class UsersController {
         id: string;
         email: string;
         role: string;
-    }, data: {
-        email?: string;
-    }): Promise<{
+    }, dto: UpdateProfileDto): Promise<{
+        name: string | null;
         email: string;
+        phone: string | null;
         id: string;
+        avatar: string | null;
         role: import(".prisma/client").$Enums.Role;
+        emailVerified: boolean;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -94,10 +98,10 @@ export declare class UsersController {
             courseId: string;
         })[];
     }>;
-    update(id: string, data: {
-        email?: string;
-        role?: string;
-    }): Promise<{
+    update(actor: {
+        id: string;
+        role: string;
+    }, id: string, dto: AdminUpdateUserDto): Promise<{
         name: string | null;
         email: string;
         id: string;
@@ -105,7 +109,9 @@ export declare class UsersController {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    remove(id: string): Promise<{
+    remove(actor: {
+        id: string;
+    }, id: string): Promise<{
         message: string;
     }>;
 }

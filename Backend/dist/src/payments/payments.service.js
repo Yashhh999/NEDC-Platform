@@ -49,6 +49,13 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const crypto = __importStar(require("crypto"));
 const Razorpay = require("razorpay");
+function safeEqualHex(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string')
+        return false;
+    if (a.length !== b.length)
+        return false;
+    return crypto.timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+}
 let PaymentsService = class PaymentsService {
     prisma;
     configService;
@@ -161,7 +168,7 @@ let PaymentsService = class PaymentsService {
             .createHmac('sha256', keySecret)
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest('hex');
-        if (expectedSignature !== razorpay_signature) {
+        if (!safeEqualHex(expectedSignature, razorpay_signature)) {
             await this.prisma.payment.update({
                 where: { orderId: razorpay_order_id },
                 data: { status: client_1.PaymentStatus.FAILED },
@@ -238,17 +245,27 @@ let PaymentsService = class PaymentsService {
             orderBy: { createdAt: 'desc' },
         });
     }
-    async handleWebhook(body, signature) {
+    async handleWebhook(rawBody, signature) {
         const webhookSecret = this.configService.get('RAZORPAY_WEBHOOK_SECRET');
         if (!webhookSecret) {
             throw new common_1.BadRequestException('Webhook secret not configured');
         }
+        if (!signature || !rawBody?.length) {
+            throw new common_1.BadRequestException('Missing webhook signature or body');
+        }
         const expectedSignature = crypto
             .createHmac('sha256', webhookSecret)
-            .update(JSON.stringify(body))
+            .update(rawBody)
             .digest('hex');
-        if (expectedSignature !== signature) {
+        if (!safeEqualHex(expectedSignature, signature)) {
             throw new common_1.BadRequestException('Invalid webhook signature');
+        }
+        let body;
+        try {
+            body = JSON.parse(rawBody.toString('utf8'));
+        }
+        catch {
+            throw new common_1.BadRequestException('Webhook body is not valid JSON');
         }
         const event = body.event;
         const payload = body.payload?.payment?.entity;

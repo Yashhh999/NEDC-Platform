@@ -2,17 +2,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
-interface WebhookPayload {
-    event: string;
-    payload?: {
-        payment?: {
-            entity?: {
-                id: string;
-                order_id: string;
-            };
-        };
-    };
-}
 export declare class PaymentsService {
     private prisma;
     private configService;
@@ -78,7 +67,7 @@ export declare class PaymentsService {
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
     })[]>;
-    handleWebhook(body: WebhookPayload, signature: string): Promise<{
+    handleWebhook(rawBody: Buffer, signature: string): Promise<{
         status: string;
     }>;
     applyCoupon(code: string, courseId: string): Promise<{
@@ -91,4 +80,3 @@ export declare class PaymentsService {
         currency: string;
     }>;
 }
-export {};

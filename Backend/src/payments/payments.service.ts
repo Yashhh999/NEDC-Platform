@@ -44,6 +44,14 @@ interface WebhookPayload {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import Razorpay = require('razorpay');
 
+// Constant-time hex string comparison. Inputs that are not equal length
+// fail-fast rather than throwing on timingSafeEqual.
+function safeEqualHex(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+}
+
 @Injectable()
 export class PaymentsService {
   private razorpay: RazorpayInstance | null = null;
@@ -193,7 +201,7 @@ export class PaymentsService {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    if (!safeEqualHex(expectedSignature, razorpay_signature)) {
       // Mark payment as failed
       await this.prisma.payment.update({
         where: { orderId: razorpay_order_id },
@@ -296,23 +304,33 @@ export class PaymentsService {
 
   // ─── Razorpay Webhook ────────────────────────────────
   // Uses RAZORPAY_WEBHOOK_SECRET (set in Razorpay Dashboard),
-  // NOT the API key secret.
-  async handleWebhook(body: WebhookPayload, signature: string) {
+  // NOT the API key secret. The signature is computed over the *raw* request
+  // bytes — JSON.stringify can re-order keys and would silently fail.
+  async handleWebhook(rawBody: Buffer, signature: string) {
     const webhookSecret = this.configService.get<string>(
       'RAZORPAY_WEBHOOK_SECRET',
     );
     if (!webhookSecret) {
       throw new BadRequestException('Webhook secret not configured');
     }
+    if (!signature || !rawBody?.length) {
+      throw new BadRequestException('Missing webhook signature or body');
+    }
 
-    // Verify webhook signature using the dedicated webhook secret
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(JSON.stringify(body))
+      .update(rawBody)
       .digest('hex');
 
-    if (expectedSignature !== signature) {
+    if (!safeEqualHex(expectedSignature, signature)) {
       throw new BadRequestException('Invalid webhook signature');
+    }
+
+    let body: WebhookPayload;
+    try {
+      body = JSON.parse(rawBody.toString('utf8')) as WebhookPayload;
+    } catch {
+      throw new BadRequestException('Webhook body is not valid JSON');
     }
 
     const event = body.event;

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { CertificatesService } from './certificates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -16,6 +17,7 @@ export class CertificatesController {
   }
 
   @Post(':courseId')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   issueCertificate(
     @CurrentUser() user: { id: string },
     @Param('courseId') courseId: string,

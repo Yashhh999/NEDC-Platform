@@ -91,20 +91,35 @@ export class UsersService {
   }
 
   // ─── Update own profile ───────────────────────────────
-  async updateProfile(userId: string, data: { email?: string }) {
+  async updateProfile(
+    userId: string,
+    data: { email?: string; name?: string; phone?: string; avatar?: string },
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    const updateData: Prisma.UserUpdateInput = {};
+    // If the user changes email, mark it unverified again so a new
+    // verification email is required before they can log in next time.
+    if (data.email && data.email !== user.email) {
+      updateData.email = data.email;
+      updateData.emailVerified = false;
     }
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.avatar !== undefined) updateData.avatar = data.avatar;
 
     return this.prisma.user.update({
       where: { id: userId },
-      data,
+      data: updateData,
       select: {
         id: true,
         email: true,
+        name: true,
+        phone: true,
+        avatar: true,
         role: true,
+        emailVerified: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -112,16 +127,13 @@ export class UsersService {
   }
 
   // ─── Admin: Update user (role, email) ─────────────────
-  async update(id: string, data: { email?: string; role?: string }) {
+  async update(id: string, data: { email?: string; role?: Role }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('User not found');
 
     const updateData: Prisma.UserUpdateInput = {};
     if (data.email) updateData.email = data.email;
-    if (data.role) updateData.role = data.role as Role;
+    if (data.role) updateData.role = data.role;
 
     return this.prisma.user.update({
       where: { id },

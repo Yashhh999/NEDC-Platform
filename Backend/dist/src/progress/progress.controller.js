@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProgressController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const progress_service_1 = require("./progress.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
@@ -35,6 +36,7 @@ let ProgressController = class ProgressController {
 exports.ProgressController = ProgressController;
 __decorate([
     (0, common_1.Post)('lesson/:lessonId/complete'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 60 } }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('lessonId')),
     __metadata("design:type", Function),

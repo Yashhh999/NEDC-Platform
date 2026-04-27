@@ -12,12 +12,40 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CertificatesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const REQUIRED_COMPLETION_PERCENT = 100;
 let CertificatesService = class CertificatesService {
     prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }
     async issueCertificate(userId, courseId) {
+        const enrolled = await this.prisma.enrollment.findUnique({
+            where: { userId_courseId: { userId, courseId } },
+            select: { id: true },
+        });
+        if (!enrolled) {
+            throw new common_1.ForbiddenException('You are not enrolled in this course');
+        }
+        const course = await this.prisma.course.findUnique({
+            where: { id: courseId },
+            include: {
+                modules: { include: { lessons: { select: { id: true } } } },
+            },
+        });
+        if (!course)
+            throw new common_1.NotFoundException('Course not found');
+        const lessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id));
+        const totalLessons = lessonIds.length;
+        if (totalLessons === 0) {
+            throw new common_1.ForbiddenException('Course has no lessons to complete');
+        }
+        const completedCount = await this.prisma.progress.count({
+            where: { userId, lessonId: { in: lessonIds }, completed: true },
+        });
+        const percent = Math.round((completedCount / totalLessons) * 100);
+        if (percent < REQUIRED_COMPLETION_PERCENT) {
+            throw new common_1.ForbiddenException(`Course must be ${REQUIRED_COMPLETION_PERCENT}% complete (currently ${percent}%) to claim a certificate`);
+        }
         return this.prisma.certificate.upsert({
             where: { userId_courseId: { userId, courseId } },
             update: {},
@@ -28,7 +56,9 @@ let CertificatesService = class CertificatesService {
         return this.prisma.certificate.findMany({
             where: { userId },
             include: {
-                course: { select: { id: true, title: true, category: true, thumbnail: true } },
+                course: {
+                    select: { id: true, title: true, category: true, thumbnail: true },
+                },
             },
             orderBy: { issuedAt: 'desc' },
         });

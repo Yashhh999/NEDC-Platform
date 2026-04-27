@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const payments_service_1 = require("./payments.service");
 const create_order_dto_1 = require("./dto/create-order.dto");
 const verify_payment_dto_1 = require("./dto/verify-payment.dto");
@@ -39,8 +40,12 @@ let PaymentsController = class PaymentsController {
     getAllPayments() {
         return this.paymentsService.getAllPayments();
     }
-    webhook(body, signature) {
-        return this.paymentsService.handleWebhook(body, signature);
+    webhook(req, signature) {
+        const raw = req.rawBody;
+        if (!raw) {
+            throw new common_1.BadRequestException('Webhook raw body not captured');
+        }
+        return this.paymentsService.handleWebhook(raw, signature);
     }
     applyCoupon(dto) {
         return this.paymentsService.applyCoupon(dto.code, dto.courseId);
@@ -50,6 +55,7 @@ exports.PaymentsController = PaymentsController;
 __decorate([
     (0, common_1.Post)('create-order'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 10 } }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -59,6 +65,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('verify'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 10 } }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -83,7 +90,7 @@ __decorate([
 ], PaymentsController.prototype, "getAllPayments", null);
 __decorate([
     (0, common_1.Post)('webhook'),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Headers)('x-razorpay-signature')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
@@ -92,6 +99,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('apply-coupon'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [apply_coupon_dto_1.ApplyCouponDto]),

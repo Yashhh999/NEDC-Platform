@@ -14,11 +14,24 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const adapter_pg_1 = require("@prisma/adapter-pg");
 const pg_1 = require("pg");
+function buildPoolConfig() {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+        throw new Error('DATABASE_URL is not set');
+    }
+    const isLocal = /^postgres(ql)?:\/\/[^@]+@(localhost|127\.0\.0\.1)/i.test(connectionString);
+    const sslDisabled = process.env.PGSSL_DISABLE === 'true';
+    const config = { connectionString };
+    if (!isLocal && !sslDisabled) {
+        config.ssl = {
+            rejectUnauthorized: process.env.PGSSL_REJECT_UNAUTHORIZED !== 'false',
+        };
+    }
+    return config;
+}
 let PrismaService = class PrismaService extends client_1.PrismaClient {
     constructor() {
-        const pool = new pg_1.Pool({
-            connectionString: process.env.DATABASE_URL,
-        });
+        const pool = new pg_1.Pool(buildPoolConfig());
         const adapter = new adapter_pg_1.PrismaPg(pool);
         super({ adapter });
     }

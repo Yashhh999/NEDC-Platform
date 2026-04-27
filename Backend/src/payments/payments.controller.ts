@@ -1,11 +1,15 @@
 import {
-  Controller,
-  Post,
-  Get,
+  BadRequestException,
   Body,
-  UseGuards,
+  Controller,
+  Get,
   Headers,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
@@ -21,6 +25,7 @@ export class PaymentsController {
 
   @Post('create-order')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   createOrder(
     @CurrentUser() user: { id: string; email: string; role: string },
     @Body() dto: CreateOrderDto,
@@ -30,6 +35,7 @@ export class PaymentsController {
 
   @Post('verify')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   verifyPayment(
     @CurrentUser() user: { id: string; email: string; role: string },
     @Body() dto: VerifyPaymentDto,
@@ -52,18 +58,23 @@ export class PaymentsController {
     return this.paymentsService.getAllPayments();
   }
 
-  // ─── Razorpay Webhook (public, no JWT) ─────────────
+  // Razorpay Webhook (public, no JWT). The raw body is captured by the
+  // express raw-body middleware mounted in main.ts at this exact path.
   @Post('webhook')
   webhook(
-    @Body() body: any,
+    @Req() req: Request,
     @Headers('x-razorpay-signature') signature: string,
   ) {
-    return this.paymentsService.handleWebhook(body, signature);
+    const raw = (req as Request & { rawBody?: Buffer }).rawBody;
+    if (!raw) {
+      throw new BadRequestException('Webhook raw body not captured');
+    }
+    return this.paymentsService.handleWebhook(raw, signature);
   }
 
-  // ─── Apply Coupon (requires auth) ───────────────────
   @Post('apply-coupon')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   applyCoupon(@Body() dto: ApplyCouponDto) {
     return this.paymentsService.applyCoupon(dto.code, dto.courseId);
   }

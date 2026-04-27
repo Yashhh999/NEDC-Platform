@@ -1,4 +1,5 @@
 import { GalleryService } from './gallery.service';
+import { CreateGalleryItemDto, UpdateGalleryItemDto } from './dto/gallery-item.dto';
 export declare class GalleryController {
     private galleryService;
     constructor(galleryService: GalleryService);
@@ -10,7 +11,7 @@ export declare class GalleryController {
         order: number;
         imageUrl: string;
     }[]>;
-    create(data: any): Promise<{
+    create(dto: CreateGalleryItemDto): Promise<{
         id: string;
         createdAt: Date;
         title: string | null;
@@ -18,7 +19,7 @@ export declare class GalleryController {
         order: number;
         imageUrl: string;
     }>;
-    update(id: string, data: any): Promise<{
+    update(id: string, dto: UpdateGalleryItemDto): Promise<{
         id: string;
         createdAt: Date;
         title: string | null;

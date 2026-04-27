@@ -47,8 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       credentials: "include", // receive httpOnly cookie
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || "Login failed");
+      const err = await res.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Login failed");
     }
     const data = await res.json();
     const userData = data.data?.user || data.user;
@@ -63,12 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       credentials: "include",
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || "Signup failed");
+      const err = await res.json().catch(() => ({}));
+      const message = Array.isArray(err.message) ? err.message.join(", ") : err.message;
+      throw new Error(message || "Signup failed");
     }
-    // Auto-login after signup
-    await login(email, password);
-  }, [login]);
+    // Email verification is required before login — caller should show
+    // a "check your inbox" screen and not call login() automatically.
+  }, []);
 
   const logout = useCallback(async () => {
     await fetch(`${API_BASE}/auth/logout`, {

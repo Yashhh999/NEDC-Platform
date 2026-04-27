@@ -1,11 +1,11 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Param,
   Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
@@ -17,24 +17,22 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('courses')
 export class CoursesController {
   constructor(private coursesService: CoursesService) {}
 
-  // Public: homepage featured courses + stats
   @Get('homepage')
   getHomepageData() {
     return this.coursesService.getHomepageData();
   }
 
-  // Public: published courses only
   @Get()
   findPublished() {
     return this.coursesService.findPublished();
   }
 
-  // Admin: all courses (must be before :id to avoid route conflict)
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -42,7 +40,6 @@ export class CoursesController {
     return this.coursesService.findAll();
   }
 
-  // Admin: single course with enrollment details
   @Get(':id/admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -50,7 +47,17 @@ export class CoursesController {
     return this.coursesService.findOneAdmin(id);
   }
 
-  // Public: single course (no enrollment user data)
+  // Authenticated, enrolled (or admin) — full lesson content/videoUrl.
+  @Get(':id/learn')
+  @UseGuards(JwtAuthGuard)
+  findOneEnrolled(
+    @CurrentUser() user: { id: string; email: string; role: string },
+    @Param('id') id: string,
+  ) {
+    return this.coursesService.findOneEnrolled(id, user);
+  }
+
+  // Public — no lesson content or video URLs.
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.coursesService.findOne(id);
@@ -77,8 +84,6 @@ export class CoursesController {
     return this.coursesService.remove(id);
   }
 
-  // ─── Modules ──────────────────────────────────────────
-
   @Post('modules')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -89,7 +94,10 @@ export class CoursesController {
   @Patch('modules/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  updateModule(@Param('id') id: string, @Body() data: { title?: string; order?: number }) {
+  updateModule(
+    @Param('id') id: string,
+    @Body() data: { title?: string; order?: number },
+  ) {
     return this.coursesService.updateModule(id, data);
   }
 
@@ -99,8 +107,6 @@ export class CoursesController {
   deleteModule(@Param('id') id: string) {
     return this.coursesService.deleteModule(id);
   }
-
-  // ─── Lessons ──────────────────────────────────────────
 
   @Post('lessons')
   @UseGuards(JwtAuthGuard, RolesGuard)

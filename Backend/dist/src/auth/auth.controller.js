@@ -18,13 +18,24 @@ const throttler_1 = require("@nestjs/throttler");
 const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
+const forgot_password_dto_1 = require("./dto/forgot-password.dto");
+const reset_password_dto_1 = require("./dto/reset-password.dto");
+const verify_email_dto_1 = require("./dto/verify-email.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const current_user_decorator_1 = require("./decorators/current-user.decorator");
-function getCookieOptions() {
+const SESSION_COOKIE = 'access_token';
+function ctxFrom(req) {
+    return {
+        ip: req.ip,
+        userAgent: req.get('user-agent') ?? undefined,
+    };
+}
+function sessionCookieOptions() {
+    const isProd = process.env.NODE_ENV === 'production';
     return {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProd,
+        sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
     };
@@ -34,46 +45,59 @@ let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    async register(dto, res) {
-        const result = await this.authService.register(dto);
-        return result;
+    register(dto, req) {
+        return this.authService.register(dto, ctxFrom(req));
     }
-    async login(dto, res) {
-        const result = await this.authService.login(dto);
-        res.cookie('access_token', result.access_token, getCookieOptions());
+    async login(dto, req, res) {
+        const result = await this.authService.login(dto, ctxFrom(req));
+        res.cookie(SESSION_COOKIE, result.access_token, sessionCookieOptions());
         return result;
     }
     logout(res) {
-        res.clearCookie('access_token', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
+        const opts = sessionCookieOptions();
+        res.clearCookie(SESSION_COOKIE, {
+            httpOnly: opts.httpOnly,
+            secure: opts.secure,
+            sameSite: opts.sameSite,
+            path: opts.path,
         });
         return { message: 'Logged out successfully' };
     }
     getMe(user) {
         return { user };
     }
+    verifyEmail(dto, req) {
+        return this.authService.verifyEmail(dto.token, ctxFrom(req));
+    }
+    resendVerification(dto, req) {
+        return this.authService.resendVerification(dto.email, ctxFrom(req));
+    }
+    forgot(dto, req) {
+        return this.authService.forgotPassword(dto.email, ctxFrom(req));
+    }
+    reset(dto, req) {
+        return this.authService.resetPassword(dto.token, dto.password, ctxFrom(req));
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('register'),
-    (0, throttler_1.Throttle)({ default: { ttl: 60000, limit: 5 } }),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 5 } }),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [register_dto_1.RegisterDto, Object]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('login'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, throttler_1.Throttle)({ default: { ttl: 60000, limit: 10 } }),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 10 } }),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
@@ -92,6 +116,45 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "getMe", null);
+__decorate([
+    (0, common_1.Get)('verify-email'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 20 } }),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_email_dto_1.VerifyEmailDto, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "verifyEmail", null);
+__decorate([
+    (0, common_1.Post)('resend-verification'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 3 } }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "resendVerification", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 3 } }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "forgot", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 5 } }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [reset_password_dto_1.ResetPasswordDto, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "reset", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

@@ -12,4 +12,6 @@ export declare class SettingsService {
     setBulk(data: Record<string, string>): Promise<{
         message: string;
     }>;
+    private assertKey;
+    private assertValue;
 }

@@ -1,23 +1,28 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 
 export class UpdateLessonDto {
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
   title?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(50000)
   content?: string;
 
-  @IsString()
   @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
+  @MaxLength(2048)
   videoUrl?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
   duration?: string;
 
-  @IsNumber()
   @IsOptional()
+  @IsInt()
+  @Min(0)
   order?: number;
 }

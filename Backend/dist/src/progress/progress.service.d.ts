@@ -15,7 +15,7 @@ export declare class ProgressService {
         totalLessons: number;
         completedLessons: number;
         percentage: number;
-    } | null>;
+    }>;
     getUserProgress(userId: string): Promise<{
         courseId: string;
         course: {
@@ -49,4 +49,5 @@ export declare class ProgressService {
         completedLessons: number;
         percentage: number;
     }[]>;
+    private assertEnrolled;
 }

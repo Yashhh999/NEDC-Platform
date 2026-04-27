@@ -8,20 +8,20 @@ export declare class NotificationsService {
         message: string;
         type?: NotificationType;
     }): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         userId: string;
         title: string;
-        message: string;
         type: import(".prisma/client").$Enums.NotificationType;
         read: boolean;
     }>;
     getUserNotifications(userId: string): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         userId: string;
         title: string;
-        message: string;
         type: import(".prisma/client").$Enums.NotificationType;
         read: boolean;
     }[]>;

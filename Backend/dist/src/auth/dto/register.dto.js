@@ -21,21 +21,29 @@ exports.RegisterDto = RegisterDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "name", void 0);
 __decorate([
     (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.MaxLength)(254),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "email", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.MinLength)(6),
+    (0, class_validator_1.MinLength)(10),
+    (0, class_validator_1.MaxLength)(128),
+    (0, class_validator_1.Matches)(/[A-Z]/, { message: 'Password must contain an uppercase letter' }),
+    (0, class_validator_1.Matches)(/[a-z]/, { message: 'Password must contain a lowercase letter' }),
+    (0, class_validator_1.Matches)(/[0-9]/, { message: 'Password must contain a digit' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "password", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(20),
+    (0, class_validator_1.Matches)(/^[+0-9 \-()]*$/, { message: 'Phone must be digits and +-() only' }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "phone", void 0);
 //# sourceMappingURL=register.dto.js.map

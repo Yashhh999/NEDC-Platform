@@ -93,16 +93,30 @@ let UsersService = class UsersService {
     }
     async updateProfile(userId, data) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        if (!user) {
+        if (!user)
             throw new common_1.NotFoundException('User not found');
+        const updateData = {};
+        if (data.email && data.email !== user.email) {
+            updateData.email = data.email;
+            updateData.emailVerified = false;
         }
+        if (data.name !== undefined)
+            updateData.name = data.name;
+        if (data.phone !== undefined)
+            updateData.phone = data.phone;
+        if (data.avatar !== undefined)
+            updateData.avatar = data.avatar;
         return this.prisma.user.update({
             where: { id: userId },
-            data,
+            data: updateData,
             select: {
                 id: true,
                 email: true,
+                name: true,
+                phone: true,
+                avatar: true,
                 role: true,
+                emailVerified: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -110,9 +124,8 @@ let UsersService = class UsersService {
     }
     async update(id, data) {
         const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) {
+        if (!user)
             throw new common_1.NotFoundException('User not found');
-        }
         const updateData = {};
         if (data.email)
             updateData.email = data.email;

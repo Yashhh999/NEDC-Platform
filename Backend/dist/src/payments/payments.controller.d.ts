@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
@@ -77,7 +78,7 @@ export declare class PaymentsController {
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
     })[]>;
-    webhook(body: any, signature: string): Promise<{
+    webhook(req: Request, signature: string): Promise<{
         status: string;
     }>;
     applyCoupon(dto: ApplyCouponDto): Promise<{

@@ -20,28 +20,33 @@ class UpdateLessonDto {
 }
 exports.UpdateLessonDto = UpdateLessonDto;
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
     __metadata("design:type", String)
 ], UpdateLessonDto.prototype, "title", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50000),
     __metadata("design:type", String)
 ], UpdateLessonDto.prototype, "content", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUrl)({ require_protocol: true, protocols: ['http', 'https'] }),
+    (0, class_validator_1.MaxLength)(2048),
     __metadata("design:type", String)
 ], UpdateLessonDto.prototype, "videoUrl", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50),
     __metadata("design:type", String)
 ], UpdateLessonDto.prototype, "duration", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateLessonDto.prototype, "order", void 0);
 //# sourceMappingURL=update-lesson.dto.js.map

@@ -4,13 +4,12 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
-// Extract JWT from httpOnly cookie first, fall back to Authorization header
+const MIN_SECRET_LENGTH = 32;
+
 function cookieOrHeaderExtractor(req: Request): string | null {
-  // 1. Try httpOnly cookie
   if (req?.cookies?.access_token) {
     return req.cookies.access_token;
   }
-  // 2. Fall back to Bearer token in Authorization header
   return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 }
 
@@ -20,6 +19,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('JWT_SECRET is not defined in environment variables');
+    }
+    if (secret.length < MIN_SECRET_LENGTH) {
+      throw new Error(
+        `JWT_SECRET must be at least ${MIN_SECRET_LENGTH} characters`,
+      );
+    }
+    if (
+      process.env.NODE_ENV === 'production' &&
+      /dev|local|change[-_ ]?me|example|secret/i.test(secret)
+    ) {
+      throw new Error(
+        'JWT_SECRET appears to be a placeholder; rotate it before running in production',
+      );
     }
 
     super({

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CertificatesController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const certificates_service_1 = require("./certificates.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
@@ -44,6 +45,7 @@ __decorate([
 ], CertificatesController.prototype, "getUserCertificates", null);
 __decorate([
     (0, common_1.Post)(':courseId'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 5 } }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('courseId')),
     __metadata("design:type", Function),

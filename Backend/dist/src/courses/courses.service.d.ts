@@ -71,6 +71,40 @@ export declare class CoursesService {
         modules: ({
             lessons: {
                 id: string;
+                title: string;
+                duration: string | null;
+                order: number;
+                moduleId: string;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            courseId: string;
+            title: string;
+            order: number;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        title: string;
+        description: string | null;
+        price: number;
+        thumbnail: string | null;
+        category: string | null;
+        duration: string | null;
+        isFeatured: boolean;
+        isBestseller: boolean;
+        published: boolean;
+    }>;
+    findOneEnrolled(id: string, user: {
+        id: string;
+        role: string;
+    }): Promise<{
+        modules: ({
+            lessons: {
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 title: string;

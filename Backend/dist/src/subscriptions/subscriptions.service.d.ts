@@ -20,7 +20,8 @@ export declare class SubscriptionsService {
         endDate: Date | null;
         message?: undefined;
     }>;
-    subscribe(userId: string, plan: SubscriptionPlan): Promise<{
+    subscribe(userId: string, plan: SubscriptionPlan): Promise<void>;
+    grantActiveSubscription(userId: string, plan: SubscriptionPlan, durationMonths?: number): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;

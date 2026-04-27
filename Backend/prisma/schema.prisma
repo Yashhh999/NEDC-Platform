@@ -60,6 +60,19 @@ model User {
   phone         String?
   avatar        String?
   role          Role           @default(USER)
+
+  emailVerified           Boolean   @default(false)
+  emailVerifyTokenHash    String?   @unique
+  emailVerifyTokenExpires DateTime?
+
+  passwordResetTokenHash    String?   @unique
+  passwordResetTokenExpires DateTime?
+
+  loginFailures Int       @default(0)
+  lockedUntil   DateTime?
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -69,6 +82,36 @@ model User {
   certificates  Certificate[]
   subscription  Subscription?
   notifications Notification[]
+}
+
+// ─── AUDIT LOG ───────────────────────────────────────────
+// Records authentication attempts and notable security events
+// for anomaly detection and post-incident forensics.
+
+enum AuthEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGIN_LOCKED
+  REGISTER
+  LOGOUT
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  EMAIL_VERIFY
+}
+
+model AuthLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  email     String?
+  event     AuthEvent
+  ip        String?
+  userAgent String?
+  reason    String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([email, createdAt])
+  @@index([event, createdAt])
 }
 
 // ─── COURSE ──────────────────────────────────────────────

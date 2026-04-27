@@ -139,10 +139,11 @@ export declare class CoursesController {
         isBestseller: boolean;
         published: boolean;
     }>;
-    findOne(id: string): Promise<{
-        _count: {
-            enrollments: number;
-        };
+    findOneEnrolled(user: {
+        id: string;
+        email: string;
+        role: string;
+    }, id: string): Promise<{
         modules: ({
             lessons: {
                 id: string;
@@ -153,6 +154,40 @@ export declare class CoursesController {
                 order: number;
                 content: string | null;
                 videoUrl: string | null;
+                moduleId: string;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            courseId: string;
+            title: string;
+            order: number;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        title: string;
+        description: string | null;
+        price: number;
+        thumbnail: string | null;
+        category: string | null;
+        duration: string | null;
+        isFeatured: boolean;
+        isBestseller: boolean;
+        published: boolean;
+    }>;
+    findOne(id: string): Promise<{
+        _count: {
+            enrollments: number;
+        };
+        modules: ({
+            lessons: {
+                id: string;
+                title: string;
+                duration: string | null;
+                order: number;
                 moduleId: string;
             }[];
         } & {

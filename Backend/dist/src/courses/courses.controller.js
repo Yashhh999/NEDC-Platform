@@ -23,6 +23,7 @@ const update_lesson_dto_1 = require("./dto/update-lesson.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
 let CoursesController = class CoursesController {
     coursesService;
     constructor(coursesService) {
@@ -39,6 +40,9 @@ let CoursesController = class CoursesController {
     }
     findOneAdmin(id) {
         return this.coursesService.findOneAdmin(id);
+    }
+    findOneEnrolled(user, id) {
+        return this.coursesService.findOneEnrolled(id, user);
     }
     findOne(id) {
         return this.coursesService.findOne(id);
@@ -101,6 +105,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], CoursesController.prototype, "findOneAdmin", null);
+__decorate([
+    (0, common_1.Get)(':id/learn'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], CoursesController.prototype, "findOneEnrolled", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

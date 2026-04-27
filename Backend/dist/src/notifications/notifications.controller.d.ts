@@ -5,11 +5,11 @@ export declare class NotificationsController {
     getUserNotifications(user: {
         id: string;
     }): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         userId: string;
         title: string;
-        message: string;
         type: import(".prisma/client").$Enums.NotificationType;
         read: boolean;
     }[]>;

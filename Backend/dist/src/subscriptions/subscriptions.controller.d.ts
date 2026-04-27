@@ -24,16 +24,7 @@ export declare class SubscriptionsController {
     }>;
     subscribe(user: {
         id: string;
-    }, plan: SubscriptionPlan): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        userId: string;
-        status: import(".prisma/client").$Enums.SubscriptionStatus;
-        plan: import(".prisma/client").$Enums.SubscriptionPlan;
-        startDate: Date;
-        endDate: Date | null;
-    }>;
+    }, plan: SubscriptionPlan): Promise<void>;
     cancel(user: {
         id: string;
     }): Promise<{

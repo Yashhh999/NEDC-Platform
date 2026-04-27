@@ -19,7 +19,7 @@ export declare class ProgressController {
         totalLessons: number;
         completedLessons: number;
         percentage: number;
-    } | null>;
+    }>;
     getUserProgress(user: {
         id: string;
     }): Promise<{

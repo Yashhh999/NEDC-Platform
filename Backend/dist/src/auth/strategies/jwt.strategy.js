@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
+const MIN_SECRET_LENGTH = 32;
 function cookieOrHeaderExtractor(req) {
     if (req?.cookies?.access_token) {
         return req.cookies.access_token;
@@ -25,6 +26,13 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         const secret = configService.get('JWT_SECRET');
         if (!secret) {
             throw new Error('JWT_SECRET is not defined in environment variables');
+        }
+        if (secret.length < MIN_SECRET_LENGTH) {
+            throw new Error(`JWT_SECRET must be at least ${MIN_SECRET_LENGTH} characters`);
+        }
+        if (process.env.NODE_ENV === 'production' &&
+            /dev|local|change[-_ ]?me|example|secret/i.test(secret)) {
+            throw new Error('JWT_SECRET appears to be a placeholder; rotate it before running in production');
         }
         super({
             jwtFromRequest: cookieOrHeaderExtractor,

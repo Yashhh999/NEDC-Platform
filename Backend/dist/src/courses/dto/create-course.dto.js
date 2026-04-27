@@ -26,11 +26,13 @@ exports.CreateCourseDto = CreateCourseDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MaxLength)(200),
     __metadata("design:type", String)
 ], CreateCourseDto.prototype, "title", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(5000),
     __metadata("design:type", String)
 ], CreateCourseDto.prototype, "description", void 0);
 __decorate([
@@ -39,33 +41,36 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateCourseDto.prototype, "price", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUrl)({ require_protocol: true, protocols: ['http', 'https'] }),
+    (0, class_validator_1.MaxLength)(2048),
     __metadata("design:type", String)
 ], CreateCourseDto.prototype, "thumbnail", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], CreateCourseDto.prototype, "category", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50),
     __metadata("design:type", String)
 ], CreateCourseDto.prototype, "duration", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateCourseDto.prototype, "isFeatured", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateCourseDto.prototype, "isBestseller", void 0);
 __decorate([
-    (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateCourseDto.prototype, "published", void 0);
 //# sourceMappingURL=create-course.dto.js.map

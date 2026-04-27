@@ -15,22 +15,63 @@ class UpdateCourseDto {
     title;
     description;
     price;
+    thumbnail;
+    category;
+    duration;
+    isFeatured;
+    isBestseller;
+    published;
 }
 exports.UpdateCourseDto = UpdateCourseDto;
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
     __metadata("design:type", String)
 ], UpdateCourseDto.prototype, "title", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(5000),
     __metadata("design:type", String)
 ], UpdateCourseDto.prototype, "description", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateCourseDto.prototype, "price", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUrl)({ require_protocol: true, protocols: ['http', 'https'] }),
+    (0, class_validator_1.MaxLength)(2048),
+    __metadata("design:type", String)
+], UpdateCourseDto.prototype, "thumbnail", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], UpdateCourseDto.prototype, "category", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50),
+    __metadata("design:type", String)
+], UpdateCourseDto.prototype, "duration", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateCourseDto.prototype, "isFeatured", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateCourseDto.prototype, "isBestseller", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateCourseDto.prototype, "published", void 0);
 //# sourceMappingURL=update-course.dto.js.map

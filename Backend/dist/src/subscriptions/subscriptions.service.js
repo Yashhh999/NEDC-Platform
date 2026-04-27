@@ -52,13 +52,16 @@ let SubscriptionsService = class SubscriptionsService {
         if (plan === client_1.SubscriptionPlan.FREE) {
             throw new common_1.BadRequestException('You are already on the Free plan');
         }
+        throw new common_1.ForbiddenException('Paid plans must be purchased via the billing flow.');
+    }
+    async grantActiveSubscription(userId, plan, durationMonths = 1) {
         await this.prisma.subscription.updateMany({
             where: { userId, status: client_1.SubscriptionStatus.ACTIVE },
             data: { status: client_1.SubscriptionStatus.CANCELLED },
         });
         const now = new Date();
         const expiresAt = new Date(now);
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
         return this.prisma.subscription.create({
             data: {
                 userId,

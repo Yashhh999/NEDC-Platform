@@ -330,41 +330,36 @@ describe('PaymentsService', () => {
   // ─── handleWebhook ──────────────────────────────────
 
   describe('handleWebhook', () => {
-    it('should throw BadRequestException on invalid webhook signature', async () => {
-      const body = { event: 'payment.captured', payload: {} };
+    const webhookSecret = 'webhook_secret_456';
+    const signRaw = (raw: Buffer) =>
+      crypto.createHmac('sha256', webhookSecret).update(raw).digest('hex');
 
+    it('should throw BadRequestException on invalid webhook signature', async () => {
+      const raw = Buffer.from(
+        JSON.stringify({ event: 'payment.captured', payload: {} }),
+      );
       await expect(
-        service.handleWebhook(body, 'invalid_signature'),
+        service.handleWebhook(raw, 'invalid_signature'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should return ignored if no payment entity in payload', async () => {
-      const body = { event: 'payment.captured', payload: {} };
-      const webhookSecret = 'webhook_secret_456';
-      const signature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-
-      const result = await service.handleWebhook(body, signature);
+      const raw = Buffer.from(
+        JSON.stringify({ event: 'payment.captured', payload: {} }),
+      );
+      const result = await service.handleWebhook(raw, signRaw(raw));
       expect(result.status).toBe('ignored');
     });
 
     it('should process payment.captured event and increment coupon', async () => {
-      const body = {
-        event: 'payment.captured',
-        payload: {
-          payment: {
-            entity: { id: 'pay_123', order_id: 'order_456' },
+      const raw = Buffer.from(
+        JSON.stringify({
+          event: 'payment.captured',
+          payload: {
+            payment: { entity: { id: 'pay_123', order_id: 'order_456' } },
           },
-        },
-      };
-      const webhookSecret = 'webhook_secret_456';
-      const signature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-
+        }),
+      );
       mockPrismaService.payment.findUnique.mockResolvedValue({
         userId: 'user-1',
         courseId: 'course-1',
@@ -373,32 +368,25 @@ describe('PaymentsService', () => {
       });
       mockPrismaService.$transaction.mockResolvedValue([]);
 
-      const result = await service.handleWebhook(body, signature);
+      const result = await service.handleWebhook(raw, signRaw(raw));
 
       expect(result.status).toBe('ok');
-      // Verify transaction had 3 ops (payment update + enrollment upsert + coupon increment)
       const transactionArgs = mockPrismaService.$transaction.mock.calls[0][0];
       expect(transactionArgs).toHaveLength(3);
     });
 
     it('should process payment.failed event', async () => {
-      const body = {
-        event: 'payment.failed',
-        payload: {
-          payment: {
-            entity: { id: 'pay_fail', order_id: 'order_fail' },
+      const raw = Buffer.from(
+        JSON.stringify({
+          event: 'payment.failed',
+          payload: {
+            payment: { entity: { id: 'pay_fail', order_id: 'order_fail' } },
           },
-        },
-      };
-      const webhookSecret = 'webhook_secret_456';
-      const signature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-
+        }),
+      );
       mockPrismaService.payment.updateMany.mockResolvedValue({ count: 1 });
 
-      const result = await service.handleWebhook(body, signature);
+      const result = await service.handleWebhook(raw, signRaw(raw));
 
       expect(result.status).toBe('ok');
       expect(mockPrismaService.payment.updateMany).toHaveBeenCalledWith(

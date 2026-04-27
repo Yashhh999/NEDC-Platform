@@ -1,8 +1,21 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { GalleryService } from './gallery.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  CreateGalleryItemDto,
+  UpdateGalleryItemDto,
+} from './dto/gallery-item.dto';
 
 @Controller('gallery')
 export class GalleryController {
@@ -16,15 +29,15 @@ export class GalleryController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  create(@Body() data: any) {
-    return this.galleryService.create(data);
+  create(@Body() dto: CreateGalleryItemDto) {
+    return this.galleryService.create(dto);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  update(@Param('id') id: string, @Body() data: any) {
-    return this.galleryService.update(id, data);
+  update(@Param('id') id: string, @Body() dto: UpdateGalleryItemDto) {
+    return this.galleryService.update(id, dto);
   }
 
   @Delete(':id')

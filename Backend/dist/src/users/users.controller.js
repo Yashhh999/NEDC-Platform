@@ -19,6 +19,8 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
+const update_profile_dto_1 = require("./dto/update-profile.dto");
+const admin_update_user_dto_1 = require("./dto/admin-update-user.dto");
 let UsersController = class UsersController {
     usersService;
     constructor(usersService) {
@@ -27,8 +29,8 @@ let UsersController = class UsersController {
     getProfile(user) {
         return this.usersService.getProfile(user.id);
     }
-    updateProfile(user, data) {
-        return this.usersService.updateProfile(user.id, data);
+    updateProfile(user, dto) {
+        return this.usersService.updateProfile(user.id, dto);
     }
     findAll() {
         return this.usersService.findAll();
@@ -36,10 +38,16 @@ let UsersController = class UsersController {
     findOne(id) {
         return this.usersService.findOne(id);
     }
-    update(id, data) {
-        return this.usersService.update(id, data);
+    update(actor, id, dto) {
+        if (actor.id === id && dto.role && dto.role !== 'ADMIN') {
+            throw new common_1.BadRequestException('You cannot change your own role');
+        }
+        return this.usersService.update(id, dto);
     }
-    remove(id) {
+    remove(actor, id) {
+        if (actor.id === id) {
+            throw new common_1.BadRequestException('You cannot delete your own account');
+        }
         return this.usersService.remove(id);
     }
 };
@@ -56,7 +64,7 @@ __decorate([
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, update_profile_dto_1.UpdateProfileDto]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "updateProfile", null);
 __decorate([
@@ -80,19 +88,21 @@ __decorate([
     (0, common_1.Patch)(':id'),
     (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, String, admin_update_user_dto_1.AdminUpdateUserDto]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)('admin'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "remove", null);
 exports.UsersController = UsersController = __decorate([

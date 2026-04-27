@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 
@@ -46,8 +51,21 @@ export class SubscriptionsService {
     if (plan === SubscriptionPlan.FREE) {
       throw new BadRequestException('You are already on the Free plan');
     }
+    // Paid plans must go through the payment flow (Razorpay) and be activated
+    // by the verified-payment handler. Direct activation is forbidden because
+    // it would let any authenticated user grant themselves a paid plan.
+    throw new ForbiddenException(
+      'Paid plans must be purchased via the billing flow.',
+    );
+  }
 
-    // Cancel any existing active subscription
+  // Internal: called from the payment-verified path or admin tools to grant
+  // an active subscription. Not exposed via HTTP.
+  async grantActiveSubscription(
+    userId: string,
+    plan: SubscriptionPlan,
+    durationMonths = 1,
+  ) {
     await this.prisma.subscription.updateMany({
       where: { userId, status: SubscriptionStatus.ACTIVE },
       data: { status: SubscriptionStatus.CANCELLED },
@@ -55,7 +73,7 @@ export class SubscriptionsService {
 
     const now = new Date();
     const expiresAt = new Date(now);
-    expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 month subscription
+    expiresAt.setMonth(expiresAt.getMonth() + durationMonths);
 
     return this.prisma.subscription.create({
       data: {

@@ -12,6 +12,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CoursesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const PUBLIC_LESSON_SELECT = {
+    id: true,
+    title: true,
+    duration: true,
+    order: true,
+    moduleId: true,
+};
+const FULL_LESSON_SELECT = {
+    id: true,
+    title: true,
+    content: true,
+    videoUrl: true,
+    duration: true,
+    order: true,
+    moduleId: true,
+    createdAt: true,
+    updatedAt: true,
+};
 let CoursesService = class CoursesService {
     prisma;
     constructor(prisma) {
@@ -43,15 +61,48 @@ let CoursesService = class CoursesService {
             where: { id },
             include: {
                 modules: {
-                    include: { lessons: { orderBy: { order: 'asc' } } },
+                    include: {
+                        lessons: {
+                            orderBy: { order: 'asc' },
+                            select: PUBLIC_LESSON_SELECT,
+                        },
+                    },
                     orderBy: { order: 'asc' },
                 },
                 _count: { select: { enrollments: true } },
             },
         });
-        if (!course) {
+        if (!course)
             throw new common_1.NotFoundException('Course not found');
+        return course;
+    }
+    async findOneEnrolled(id, user) {
+        const isAdmin = user.role?.toLowerCase() === 'admin';
+        if (!isAdmin) {
+            const enrolled = await this.prisma.enrollment.findUnique({
+                where: { userId_courseId: { userId: user.id, courseId: id } },
+                select: { id: true },
+            });
+            if (!enrolled) {
+                throw new common_1.ForbiddenException('You are not enrolled in this course');
+            }
         }
+        const course = await this.prisma.course.findUnique({
+            where: { id },
+            include: {
+                modules: {
+                    include: {
+                        lessons: {
+                            orderBy: { order: 'asc' },
+                            select: FULL_LESSON_SELECT,
+                        },
+                    },
+                    orderBy: { order: 'asc' },
+                },
+            },
+        });
+        if (!course)
+            throw new common_1.NotFoundException('Course not found');
         return course;
     }
     async findOneAdmin(id) {
@@ -59,20 +110,22 @@ let CoursesService = class CoursesService {
             where: { id },
             include: {
                 modules: {
-                    include: { lessons: { orderBy: { order: 'asc' } } },
+                    include: {
+                        lessons: {
+                            orderBy: { order: 'asc' },
+                            select: FULL_LESSON_SELECT,
+                        },
+                    },
                     orderBy: { order: 'asc' },
                 },
                 enrollments: {
-                    include: {
-                        user: { select: { id: true, email: true, name: true } },
-                    },
+                    include: { user: { select: { id: true, email: true, name: true } } },
                 },
                 _count: { select: { enrollments: true } },
             },
         });
-        if (!course) {
+        if (!course)
             throw new common_1.NotFoundException('Course not found');
-        }
         return course;
     }
     async getHomepageData() {
@@ -80,9 +133,7 @@ let CoursesService = class CoursesService {
             this.prisma.course.findMany({
                 where: { published: true, isFeatured: true },
                 take: 4,
-                include: {
-                    _count: { select: { enrollments: true, modules: true } },
-                },
+                include: { _count: { select: { enrollments: true, modules: true } } },
                 orderBy: { createdAt: 'desc' },
             }),
             this.prisma.course.count({ where: { published: true } }),
@@ -96,9 +147,7 @@ let CoursesService = class CoursesService {
                     id: { notIn: courses.map((c) => c.id) },
                 },
                 take: 4 - courses.length,
-                include: {
-                    _count: { select: { enrollments: true, modules: true } },
-                },
+                include: { _count: { select: { enrollments: true, modules: true } } },
                 orderBy: { createdAt: 'desc' },
             });
             courses = [...courses, ...remaining];

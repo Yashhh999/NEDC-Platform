@@ -5,6 +5,7 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { EnrollmentsService } from './enrollments.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,6 +19,7 @@ export class EnrollmentsController {
   constructor(private enrollmentsService: EnrollmentsService) {}
 
   @Post()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   enroll(
     @CurrentUser() user: { id: string; email: string; role: string },
     @Body() dto: CreateEnrollmentDto,

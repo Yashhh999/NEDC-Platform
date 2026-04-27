@@ -18,6 +18,7 @@ const gallery_service_1 = require("./gallery.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const gallery_item_dto_1 = require("./dto/gallery-item.dto");
 let GalleryController = class GalleryController {
     galleryService;
     constructor(galleryService) {
@@ -26,11 +27,11 @@ let GalleryController = class GalleryController {
     findAll() {
         return this.galleryService.findAll();
     }
-    create(data) {
-        return this.galleryService.create(data);
+    create(dto) {
+        return this.galleryService.create(dto);
     }
-    update(id, data) {
-        return this.galleryService.update(id, data);
+    update(id, dto) {
+        return this.galleryService.update(id, dto);
     }
     remove(id) {
         return this.galleryService.remove(id);
@@ -49,7 +50,7 @@ __decorate([
     (0, roles_decorator_1.Roles)('admin'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [gallery_item_dto_1.CreateGalleryItemDto]),
     __metadata("design:returntype", void 0)
 ], GalleryController.prototype, "create", null);
 __decorate([
@@ -59,7 +60,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, gallery_item_dto_1.UpdateGalleryItemDto]),
     __metadata("design:returntype", void 0)
 ], GalleryController.prototype, "update", null);
 __decorate([

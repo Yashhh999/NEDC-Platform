@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
@@ -6,11 +10,32 @@ import { CreateModuleDto } from './dto/create-module.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 
+// Lesson fields safe to expose to non-enrolled / unauthenticated users.
+const PUBLIC_LESSON_SELECT = {
+  id: true,
+  title: true,
+  duration: true,
+  order: true,
+  moduleId: true,
+} as const;
+
+// Full lesson select (including content + videoUrl) for enrolled users
+// or admins.
+const FULL_LESSON_SELECT = {
+  id: true,
+  title: true,
+  content: true,
+  videoUrl: true,
+  duration: true,
+  order: true,
+  moduleId: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 @Injectable()
 export class CoursesService {
   constructor(private prisma: PrismaService) {}
-
-  // ─── Courses ────────────────────────────────────────────
 
   async findAll() {
     return this.prisma.course.findMany({
@@ -35,69 +60,95 @@ export class CoursesService {
     });
   }
 
-  // Public endpoint — no user enrollment data (privacy + performance)
+  // Public — no lesson content or video URLs leak.
   async findOne(id: string) {
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
         modules: {
-          include: { lessons: { orderBy: { order: 'asc' } } },
+          include: {
+            lessons: {
+              orderBy: { order: 'asc' },
+              select: PUBLIC_LESSON_SELECT,
+            },
+          },
           orderBy: { order: 'asc' },
         },
         _count: { select: { enrollments: true } },
       },
     });
 
-    if (!course) {
-      throw new NotFoundException('Course not found');
-    }
-
+    if (!course) throw new NotFoundException('Course not found');
     return course;
   }
 
-  // Admin-only — includes enrollment details with user info
+  // Authenticated — enrolled users (or admin) get the full lesson payload.
+  async findOneEnrolled(id: string, user: { id: string; role: string }) {
+    const isAdmin = user.role?.toLowerCase() === 'admin';
+    if (!isAdmin) {
+      const enrolled = await this.prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: user.id, courseId: id } },
+        select: { id: true },
+      });
+      if (!enrolled) {
+        throw new ForbiddenException('You are not enrolled in this course');
+      }
+    }
+
+    const course = await this.prisma.course.findUnique({
+      where: { id },
+      include: {
+        modules: {
+          include: {
+            lessons: {
+              orderBy: { order: 'asc' },
+              select: FULL_LESSON_SELECT,
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+    if (!course) throw new NotFoundException('Course not found');
+    return course;
+  }
+
   async findOneAdmin(id: string) {
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
         modules: {
-          include: { lessons: { orderBy: { order: 'asc' } } },
+          include: {
+            lessons: {
+              orderBy: { order: 'asc' },
+              select: FULL_LESSON_SELECT,
+            },
+          },
           orderBy: { order: 'asc' },
         },
         enrollments: {
-          include: {
-            user: { select: { id: true, email: true, name: true } },
-          },
+          include: { user: { select: { id: true, email: true, name: true } } },
         },
         _count: { select: { enrollments: true } },
       },
     });
 
-    if (!course) {
-      throw new NotFoundException('Course not found');
-    }
-
+    if (!course) throw new NotFoundException('Course not found');
     return course;
   }
 
-  // ─── Homepage Data (public) ─────────────────────────────
   async getHomepageData() {
-    const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all(
-      [
-        this.prisma.course.findMany({
-          where: { published: true, isFeatured: true },
-          take: 4,
-          include: {
-            _count: { select: { enrollments: true, modules: true } },
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.course.count({ where: { published: true } }),
-        this.prisma.enrollment.count(),
-      ],
-    );
+    const [featuredCourses, totalCourses, totalEnrollments] = await Promise.all([
+      this.prisma.course.findMany({
+        where: { published: true, isFeatured: true },
+        take: 4,
+        include: { _count: { select: { enrollments: true, modules: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.course.count({ where: { published: true } }),
+      this.prisma.enrollment.count(),
+    ]);
 
-    // If fewer than 4 featured, backfill with bestsellers or recent
     let courses = featuredCourses;
     if (courses.length < 4) {
       const remaining = await this.prisma.course.findMany({
@@ -106,9 +157,7 @@ export class CoursesService {
           id: { notIn: courses.map((c) => c.id) },
         },
         take: 4 - courses.length,
-        include: {
-          _count: { select: { enrollments: true, modules: true } },
-        },
+        include: { _count: { select: { enrollments: true, modules: true } } },
         orderBy: { createdAt: 'desc' },
       });
       courses = [...courses, ...remaining];
@@ -140,8 +189,6 @@ export class CoursesService {
     return { message: 'Course deleted successfully' };
   }
 
-  // ─── Modules ────────────────────────────────────────────
-
   async createModule(dto: CreateModuleDto) {
     return this.prisma.module.create({ data: dto });
   }
@@ -154,8 +201,6 @@ export class CoursesService {
     await this.prisma.module.delete({ where: { id } });
     return { message: 'Module deleted' };
   }
-
-  // ─── Lessons ────────────────────────────────────────────
 
   async createLesson(dto: CreateLessonDto) {
     return this.prisma.lesson.create({ data: dto });

@@ -1,39 +1,53 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateCourseDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(5000)
   description?: string;
 
   @IsNumber()
   @Min(0)
   price: number;
 
-  @IsString()
   @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
+  @MaxLength(2048)
   thumbnail?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   category?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
   duration?: string;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   isFeatured?: boolean;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   isBestseller?: boolean;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   published?: boolean;
 }
