@@ -43,6 +43,8 @@ export declare class PaymentsService {
         };
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         userId: string;
         courseId: string;
         orderId: string;
@@ -51,14 +53,12 @@ export declare class PaymentsService {
         amount: number;
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     getAllPayments(): Promise<({
         user: {
-            id: string;
             name: string | null;
             email: string;
+            id: string;
         };
         course: {
             id: string;
@@ -67,6 +67,8 @@ export declare class PaymentsService {
         };
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         userId: string;
         courseId: string;
         orderId: string;
@@ -75,8 +77,6 @@ export declare class PaymentsService {
         amount: number;
         currency: string;
         status: import(".prisma/client").$Enums.PaymentStatus;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     handleWebhook(body: WebhookPayload, signature: string): Promise<{
         status: string;
